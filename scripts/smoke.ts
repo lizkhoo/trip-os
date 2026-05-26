@@ -188,7 +188,132 @@ async function main() {
   const kc = computeDedupKey(c);
   assertPositive(!keysMatch(ka, kc), 'dedup keys differ for different flight numbers');
 
+  // Upload-sync smoke: mock AppleVision + Claude extract, run the node-side replica of
+  // syncUpload, assert 1 attachment row + 1 candidate row linked by extractionRunId.
+  const tripRow = db.prepare(`SELECT id, home_timezone FROM trips LIMIT 1`).get() as
+    | { id: string; home_timezone: string }
+    | undefined;
+  if (!tripRow) {
+    console.error('✗ no trip from seed');
+    process.exit(1);
+  }
+  db.prepare(`UPDATE settings SET auto_promote_threshold = 0.9 WHERE id = 'default'`).run();
+
+  await runSyncUploadNodeReplica(db, {
+    fakeSourceUri: '/tmp/fake-flight.jpg',
+    fakeKind: 'image',
+    recognizeText: async () => ({
+      text: 'AS 338 RDM SEA 2026-03-14 09:02 PDT',
+      blocks: [],
+    }),
+    extractReservationFromAttachment: async ({ source_ref }) => ({
+      proposed_reservation: {
+        trip_id: tripRow.id,
+        type: 'flight',
+        title: 'AS 338 RDM → SEA',
+        start_at: '2026-03-14T09:02:00-07:00',
+        source: 'upload',
+        source_ref,
+        confidence: 0.95,
+        status: 'confirmed',
+        details: {
+          carrier: 'AS',
+          flight_number: '338',
+          depart_iata: 'RDM',
+          arrive_iata: 'SEA',
+          iana_timezone: 'America/Los_Angeles',
+        },
+      } as ReservationInput,
+      confidence: 0.95,
+      raw_claude_response: '{"mocked":true}',
+    }),
+  });
+
+  const attachmentRows = db
+    .prepare(`SELECT id, extraction_run_id, ocr_text FROM attachments`)
+    .all() as Array<{ id: string; extraction_run_id: string; ocr_text: string | null }>;
+  const uploadCandidates = db
+    .prepare(`SELECT id, source, source_ref, status FROM extraction_candidates WHERE source = 'upload'`)
+    .all() as Array<{ id: string; source: string; source_ref: string; status: string }>;
+
+  assertPositive(attachmentRows.length === 1, 'upload created 1 attachment row');
+  assertPositive(uploadCandidates.length === 1, 'upload created 1 candidate row');
+  const att = attachmentRows[0];
+  const cand = uploadCandidates[0];
+  assertPositive(
+    !!att && !!cand && att.extraction_run_id === cand.source_ref,
+    'attachment.extractionRunId === candidate.source_ref (acceptCandidate re-attach contract)',
+  );
+  assertPositive(!!att?.ocr_text, 'attachment.ocr_text populated from AppleVision mock');
+
   console.log('\n✓ smoke test passed');
+}
+
+// Node-side replica of syncUpload.importFile. Mirrors the orchestrator's logic but uses
+// better-sqlite3 prepared statements directly so it works without expo-sqlite / expo-file-system /
+// the real AppleVision native module. If you change importFile's logic, keep this in sync.
+interface UploadReplicaDeps {
+  fakeSourceUri: string;
+  fakeKind: 'image' | 'pdf';
+  recognizeText: (uri: string) => Promise<{ text: string; blocks: Array<unknown> }>;
+  extractReservationFromAttachment: (args: {
+    ocr_text: string;
+    image_uris: string[];
+    source_ref: string;
+  }) => Promise<{
+    proposed_reservation: ReservationInput;
+    confidence: number;
+    raw_claude_response: string;
+  }>;
+}
+
+async function runSyncUploadNodeReplica(db: Database.Database, deps: UploadReplicaDeps): Promise<void> {
+  const extractionRunId = uuidv4();
+  const attachmentId = uuidv4();
+  // Stand-in for storage.put — the real one copies under FileSystem.documentDirectory.
+  const fakeStorageUri = `file:///fake-uploads/${attachmentId}.${deps.fakeKind === 'pdf' ? 'pdf' : 'jpg'}`;
+
+  db.prepare(
+    `INSERT INTO attachments (id, kind, storage_uri, extraction_run_id) VALUES (?, ?, ?, ?)`,
+  ).run(attachmentId, deps.fakeKind, fakeStorageUri, extractionRunId);
+
+  const ocr = await deps.recognizeText(fakeStorageUri);
+  db.prepare(`UPDATE attachments SET ocr_text = ? WHERE id = ?`).run(ocr.text, attachmentId);
+
+  const extraction = await deps.extractReservationFromAttachment({
+    ocr_text: ocr.text,
+    image_uris: [fakeStorageUri],
+    source_ref: extractionRunId,
+  });
+
+  const proposed: ReservationInput = {
+    ...extraction.proposed_reservation,
+    source: 'upload',
+    source_ref: extractionRunId,
+    confidence: extraction.confidence,
+  } as ReservationInput;
+
+  const trips = db
+    .prepare(`SELECT id, start_date, end_date, home_timezone FROM trips`)
+    .all() as Array<{ id: string; start_date: string; end_date: string; home_timezone: string }>;
+  const start = proposed.start_at;
+  const day = new Date(start).toISOString().slice(0, 10);
+  const matching = trips.filter((t) => day >= t.start_date && day <= t.end_date);
+  const tripId = matching.length === 1 ? (matching[0]?.id ?? null) : null;
+  const finalProposed = tripId ? ({ ...proposed, trip_id: tripId } as ReservationInput) : proposed;
+
+  db.prepare(
+    `INSERT INTO extraction_candidates (id, trip_id, source, source_ref, raw_text, claude_response, proposed_reservation, confidence, status)
+     VALUES (?, ?, 'upload', ?, ?, ?, ?, ?, 'pending')`,
+  ).run(
+    uuidv4(),
+    tripId,
+    extractionRunId,
+    ocr.text,
+    extraction.raw_claude_response,
+    JSON.stringify(finalProposed),
+    extraction.confidence,
+  );
 }
 
 main().catch((e) => {
