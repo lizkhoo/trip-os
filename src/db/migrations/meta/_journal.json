@@ -1,0 +1,20 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1779771437381,
+      "tag": "0000_futuristic_nightshade",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1779771500000,
+      "tag": "0001_triggers_and_singletons",
+      "breakpoints": true
+    }
+  ]
+}

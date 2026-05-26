@@ -10,6 +10,27 @@ service-account*.json
 client_secret*.json
 token.json
 
+# Seed source files — NEVER commit (contain PII; run `pnpm scrub` to produce the public snapshot)
+seed/*.private.json
+seed/*.private.js
+
+# PII token list — used locally by scripts/pii-gate.sh; never commit
+.pii-tokens
+
+# Expo / Metro
+.expo/
+.expo-shared/
+expo-env.d.ts.bak
+dist/
+web-build/
+
+# Native build artifacts
+ios/Pods/
+ios/build/
+android/.gradle/
+android/build/
+android/app/build/
+
 # Xcode / iOS
 build/
 DerivedData/
