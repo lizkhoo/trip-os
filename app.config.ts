@@ -36,6 +36,10 @@ const config: ExpoConfig = {
   experiments: {
     typedRoutes: true,
   },
+  extra: {
+    // User-supplied iOS OAuth client id for Gmail. See README for setup.
+    googleClientId: process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '',
+  },
 };
 
 export default config;

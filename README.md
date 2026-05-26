@@ -38,7 +38,22 @@ The dev surface lives at `/dev` (the root route redirects there until Agent 4 sh
 
 ## Anthropic API key
 
-The Claude extraction client is part of Agent 2. When that lands, paste your API key into Settings inside the app — it lives in iOS Keychain via `expo-secure-store`. Do not put it in `.env` files; trip-os has no server, all calls happen on-device, and `.env` files are ignored to prevent accidental commit.
+Paste your Anthropic API key into Settings inside the app — it lives in iOS Keychain via `expo-secure-store`. Do not put it in `.env` files; trip-os has no server, all calls happen on-device, and `.env` files are ignored to prevent accidental commit.
+
+## Gmail OAuth
+
+trip-os connects to Gmail directly from the device using PKCE — no server, no shared secret. You need your own iOS OAuth client id:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos` (or whatever you ship under).
+2. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`).
+3. Set it in your shell before `pnpm ios`:
+   ```bash
+   export TRIPOS_GOOGLE_CLIENT_ID="1234567890-abc.apps.googleusercontent.com"
+   pnpm ios
+   ```
+   Or commit it locally to your own `.env` (git-ignored) and source it.
+
+The Gmail scope is `gmail.readonly`. Tokens land in iOS Keychain — `expo-secure-store` keeps them out of normal app storage and out of backups. Refresh is handled internally by `src/services/gmail.ts` on 401.
 
 ## Database
 
