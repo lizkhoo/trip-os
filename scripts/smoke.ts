@@ -14,8 +14,20 @@ import * as path from 'node:path';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { runSeedWithDeps } from './seed';
-import { ReservationInputSchema, type ReservationInput } from '@/domain/reservation';
+import {
+  ReservationInputSchema,
+  type Reservation,
+  type ReservationInput,
+} from '@/domain/reservation';
 import { computeDedupKey, keysMatch } from '@/services/dedup';
+import type { Location } from '@/domain/location';
+import {
+  buildItineraryDays,
+  getCityGroups,
+  getTransitPairs,
+  nightOfM,
+  appleMapsDirectionsUrl,
+} from '@/lib/itinerary';
 
 const ROOT = path.resolve(__dirname, '..');
 const MIGRATIONS_DIR = path.join(ROOT, 'src/db/migrations');
@@ -187,6 +199,96 @@ async function main() {
   (c.details as { flight_number: string }).flight_number = '339';
   const kc = computeDedupKey(c);
   assertPositive(!keysMatch(ka, kc), 'dedup keys differ for different flight numbers');
+
+  // Itinerary helpers smoke: city grouping + transit pairs + night-of-M.
+  const tripId = uuidv4();
+  const locTokyo: Location = {
+    id: uuidv4(),
+    name: 'OMO5 Tokyo Otsuka',
+    address: null,
+    lat: null,
+    lng: null,
+    geocode_query: 'OMO5 Tokyo Otsuka, Tokyo, Japan',
+    place_id: null,
+    timezone: 'Asia/Tokyo',
+  };
+  const locOsaka: Location = {
+    id: uuidv4(),
+    name: 'Hotel Granvia Osaka',
+    address: null,
+    lat: null,
+    lng: null,
+    geocode_query: 'Hotel Granvia Osaka, Osaka, Japan',
+    place_id: null,
+    timezone: 'Asia/Tokyo',
+  };
+  const locMap = new Map<string, Location>([
+    [locTokyo.id, locTokyo],
+    [locOsaka.id, locOsaka],
+  ]);
+  const lodging1: Reservation = {
+    id: uuidv4(),
+    trip_id: tripId,
+    type: 'lodging',
+    title: 'OMO5 Tokyo',
+    start_at: '2026-03-14T15:00:00+09:00',
+    end_at: '2026-03-17T11:00:00+09:00',
+    start_location_id: locTokyo.id,
+    end_location_id: locTokyo.id,
+    confirmation_code: null,
+    source: 'manual',
+    source_ref: null,
+    confidence: null,
+    status: 'confirmed',
+    details: { property_name: 'OMO5 Tokyo Otsuka', nights: 3, iana_timezone: 'Asia/Tokyo' },
+    manually_edited_at: null,
+  };
+  const lodging2: Reservation = {
+    ...lodging1,
+    id: uuidv4(),
+    title: 'Hotel Granvia Osaka',
+    start_at: '2026-03-17T15:00:00+09:00',
+    end_at: '2026-03-19T11:00:00+09:00',
+    start_location_id: locOsaka.id,
+    end_location_id: locOsaka.id,
+    details: { property_name: 'Hotel Granvia Osaka', nights: 2, iana_timezone: 'Asia/Tokyo' },
+  };
+  const days = buildItineraryDays(
+    '2026-03-14',
+    '2026-03-18',
+    [lodging1, lodging2],
+    'Asia/Tokyo',
+    locMap,
+  );
+  assertPositive(days.length === 5, 'enumerated 5 days');
+  const groups = getCityGroups(days);
+  assertPositive(
+    groups.length === 2 && groups[0]?.city === 'Tokyo' && groups[1]?.city === 'Osaka',
+    'city groups split Tokyo → Osaka',
+  );
+
+  const nightOn15 = nightOfM(lodging1, '2026-03-15', 'Asia/Tokyo');
+  assertPositive(nightOn15?.n === 2 && nightOn15?.m === 3, 'night 2 of 3 on 2026-03-15');
+  const nightOn17 = nightOfM(lodging1, '2026-03-17', 'Asia/Tokyo');
+  assertPositive(nightOn17 === null, 'checkout day is not a night for OMO5');
+
+  const transitDay = days.find((d) => d.date === '2026-03-17');
+  if (!transitDay) {
+    console.error('✗ expected a day 2026-03-17');
+    process.exit(1);
+  }
+  const pairs = getTransitPairs(
+    transitDay.reservations,
+    locMap,
+    { name: locTokyo.name, query: locTokyo.geocode_query },
+  );
+  assertPositive(
+    pairs.length >= 1 && pairs[0]?.toQuery === locOsaka.geocode_query,
+    'transit pair Tokyo → Osaka emitted on changeover day',
+  );
+
+  const mapsUrl = appleMapsDirectionsUrl(locTokyo.geocode_query, locOsaka.geocode_query);
+  assertPositive(mapsUrl.startsWith('maps://?saddr='), 'apple maps directions URL well-formed');
 
   console.log('\n✓ smoke test passed');
 }
