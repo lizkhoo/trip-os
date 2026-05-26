@@ -18,6 +18,14 @@ export default function ConsumerLayout() {
         name="trips/[id]/edit"
         options={{ title: 'Edit trip', presentation: 'modal' }}
       />
+      <Stack.Screen
+        name="trips/[id]/reservation/new"
+        options={{ title: 'Add reservation', presentation: 'modal' }}
+      />
+      <Stack.Screen
+        name="trips/[id]/reservation/[reservationId]"
+        options={{ title: 'Edit reservation', presentation: 'modal' }}
+      />
     </Stack>
   );
 }

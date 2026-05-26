@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { View, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Button, DateTimePicker, EmptyState, Input, Select } from '@/components/ui';
+import { Button, DateTimePicker, Input, Select } from '@/components/ui';
 import { getTrip } from '@/services/trips';
 import { db } from '@/db/client';
 import { trips } from '@/db/schema';
@@ -10,7 +10,7 @@ import { eq } from 'drizzle-orm';
 import { TIMEZONE_OPTIONS } from '@/lib/timezones';
 
 export default function EditTripScreen() {
-  const params = useLocalSearchParams<{ id: string; reservationId?: string }>();
+  const params = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
   const [loaded, setLoaded] = useState(false);
   const [title, setTitle] = useState('');
@@ -62,19 +62,6 @@ export default function EditTripScreen() {
       setBusy(false);
     }
   }, [params.id, title, start, end, tz, router]);
-
-  if (params.reservationId) {
-    // Reservation manual edit is P1; this screen only knows about the trip itself for now.
-    return (
-      <SafeAreaView className="flex-1 bg-paper">
-        <EmptyState
-          title="Reservation edit coming soon"
-          description="Inline reservation edit is on the next slice of this PR."
-          action={<Button title="Close" onPress={() => router.back()} />}
-        />
-      </SafeAreaView>
-    );
-  }
 
   if (!loaded) {
     return <SafeAreaView className="flex-1 bg-paper" />;

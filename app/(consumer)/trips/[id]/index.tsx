@@ -132,6 +132,17 @@ export default function TripDetail() {
         </Pressable>
         <View className="flex-row gap-2">
           <Button
+            title="+ Add"
+            size="sm"
+            variant="secondary"
+            onPress={() =>
+              router.push({
+                pathname: '/trips/[id]/reservation/new',
+                params: { id: trip.id },
+              })
+            }
+          />
+          <Button
             title="Map"
             size="sm"
             variant="secondary"
@@ -183,7 +194,7 @@ export default function TripDetail() {
             onEdit={() => {
               sheet.current?.close();
               router.push({
-                pathname: '/trips/[id]/edit',
+                pathname: '/trips/[id]/reservation/[reservationId]',
                 params: { id: trip.id, reservationId: selected.id },
               });
             }}
