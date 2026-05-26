@@ -1,0 +1,809 @@
+[
+  {
+    "date": "2026-03-14",
+    "day": "Saturday",
+    "event": "Depart",
+    "hotel": "",
+    "city": "",
+    "time": "9:02 AM first flight",
+    "details": "Alaska Airlines trip.",
+    "confirmation": "Trip 1 (AAAAAA): Traveler A, Traveler B | Trip 2 (BBBBBB): Traveler C, Traveler D",
+    "subEvents": [
+      {
+        "time": "9:02 AM",
+        "name": "AS 338 RDM → SEA",
+        "detail": "Bend/Redmond → Seattle, 1h 23m. Arrives 10:25 AM."
+      },
+      {
+        "time": "1:30 PM",
+        "name": "JL 67 SEA → NRT",
+        "detail": "Seattle → Tokyo Narita. Arrives Sun Mar 15, 3:40 PM."
+      }
+    ],
+    "links": [
+      {
+        "name": "Redmond Municipal Airport (RDM)",
+        "map": "Redmond Municipal Airport, Bend, Oregon"
+      },
+      {
+        "name": "Seattle-Tacoma International (SEA)",
+        "map": "Seattle-Tacoma International Airport, Seattle, Washington"
+      },
+      {
+        "name": "Narita International Airport (NRT)",
+        "map": "Narita International Airport, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-15",
+    "day": "Sunday",
+    "event": "Arrive in Japan",
+    "hotel": "Disney Ambassador Hotel",
+    "city": "Maihama",
+    "time": "3:30 PM arrival",
+    "details": "Room 1, Standard Room (Twin). Can order takeout at hotel. Last day to see Sinbad’s Storybook Voyage.",
+    "confirmation": "TDR Reservation: 158782250",
+    "subEvents": [
+      {
+        "time": "8:00 PM",
+        "name": "Chef Mickey (Privileges)",
+        "detail": "Dinner at Disney Ambassador Hotel"
+      }
+    ],
+    "links": [
+      {
+        "name": "Disney Ambassador Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/da.html",
+        "map": "Disney Ambassador Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Chef Mickey",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/da/restaurant.html",
+        "map": "Disney Ambassador Hotel, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-16",
+    "day": "Monday",
+    "event": "Maihama Day",
+    "hotel": "Disney Ambassador Hotel",
+    "city": "Maihama",
+    "time": "",
+    "details": "Room 1, Standard Room (Twin).",
+    "confirmation": "",
+    "subEvents": [
+      {
+        "time": "11:30 AM",
+        "name": "Empire Grill (Privileges)",
+        "detail": "Lunch at hotel"
+      },
+      {
+        "time": "5:30 PM",
+        "name": "Center Street Coffeehouse (Privileges)",
+        "detail": "Tokyo Disneyland"
+      }
+    ],
+    "links": [
+      {
+        "name": "Disney Ambassador Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/da.html",
+        "map": "Disney Ambassador Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Empire Grill",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/da/restaurant.html",
+        "map": "Disney Ambassador Hotel, Urayasu, Japan"
+      },
+      {
+        "name": "Center Street Coffeehouse",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-17",
+    "day": "Tuesday",
+    "event": "Tokyo Disneyland",
+    "hotel": "Disney Ambassador Hotel",
+    "city": "Maihama",
+    "time": "",
+    "details": "Room 1, Standard Room (Twin).",
+    "confirmation": "",
+    "subEvents": [
+      {
+        "time": "10:00 AM",
+        "name": "Center Street Coffeehouse",
+        "detail": "Tokyo Disneyland"
+      },
+      {
+        "time": "5:10 PM",
+        "name": "Horizon Bay Restaurant",
+        "detail": "Tokyo DisneySea"
+      }
+    ],
+    "links": [
+      {
+        "name": "Tokyo Disneyland",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Tokyo DisneySea",
+        "url": "https://www.tokyodisneyresort.jp/en/tds/",
+        "map": "Tokyo DisneySea, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Disney Ambassador Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/da.html",
+        "map": "Disney Ambassador Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Center Street Coffeehouse",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Horizon Bay Restaurant",
+        "url": "https://www.tokyodisneyresort.jp/en/tds/",
+        "map": "Tokyo DisneySea, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-18",
+    "day": "Wednesday",
+    "event": "Travel to Yuzawa",
+    "hotel": "Livemax Resort Echigo Yuzawa",
+    "city": "Niigata",
+    "time": "12 PM checkout",
+    "details": "Trip.com —",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Livemax Resort Echigo Yuzawa",
+        "url": "https://www.hotel-livemax.com/niigata/echigoyuzawa/",
+        "map": "Hotel Livemax Resort Echigo Yuzawa, Yuzawa, Niigata, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-19",
+    "day": "Thursday",
+    "event": "Snow Peak Check-in",
+    "hotel": "Snow Peak HQ Field Suite Spa",
+    "city": "Niigata → Sanjo",
+    "time": "3:00 PM check-in",
+    "details": "Junior Suite \"Forest\" Double. 2.5 hrs from Ueno Station via Jōetsu Shinkansen Toki 327.",
+    "confirmation": "Reservation: 3876-4219-5373 —",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Snow Peak Field Suite Spa HQ",
+        "url": "https://www.snowpeak.co.jp/fieldsuitespa-headquarters/",
+        "map": "Snow Peak Headquarters, Sanjo, Niigata, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-20",
+    "day": "Friday",
+    "event": "Travel to Niigata City",
+    "hotel": "Art Hotel Niigata Station",
+    "city": "Niigata",
+    "time": "11:00 AM checkout",
+    "details": "",
+    "confirmation": "Priceline: 4861915992",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Art Hotel Niigata Station",
+        "url": "https://www.art-niigatastation.com/en/",
+        "map": "Art Hotel Niigata Station, Niigata, Japan"
+      },
+      {
+        "name": "Italia Mamma",
+        "map": "Italia Mamma, Niigata, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-21",
+    "day": "Saturday",
+    "event": "Niigata City",
+    "hotel": "Art Hotel Niigata Station",
+    "city": "Niigata",
+    "time": "",
+    "details": "Shuttle bus to Sanjo station at 10:00 and 13:30",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Art Hotel Niigata Station",
+        "url": "https://www.art-niigatastation.com/en/",
+        "map": "Art Hotel Niigata Station, Niigata, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-22",
+    "day": "Sunday",
+    "event": "Niigata City",
+    "hotel": "Art Hotel Niigata Station",
+    "city": "Niigata",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Art Hotel Niigata Station",
+        "url": "https://www.art-niigatastation.com/en/",
+        "map": "Art Hotel Niigata Station, Niigata, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-23",
+    "day": "Monday",
+    "event": "Fly to Osaka → Awaji",
+    "hotel": "Grand Nikko Awaji",
+    "city": "Osaka",
+    "time": "3 PM check-in",
+    "details": "",
+    "confirmation": "ANA flight 12:25–1:30 PM, booking: CCCCCC (non-refundable)\nHotel: 10975JP686778",
+    "subEvents": [
+      {
+        "time": "12:25 PM",
+        "name": "ANA flight Niigata → Osaka",
+        "detail": "Booking: CCCCCC"
+      }
+    ],
+    "links": [
+      {
+        "name": "Grand Nikko Awaji",
+        "url": "https://www.grandnikko-awaji.jp/en/",
+        "map": "Grand Nikko Awaji, Awaji, Hyogo, Japan"
+      },
+      {
+        "name": "Niigata Airport",
+        "map": "Niigata Airport, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-24",
+    "day": "Tuesday",
+    "event": "Awaji Day",
+    "hotel": "Grand Nikko Awaji",
+    "city": "Osaka",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Grand Nikko Awaji",
+        "url": "https://www.grandnikko-awaji.jp/en/",
+        "map": "Grand Nikko Awaji, Awaji, Hyogo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-25",
+    "day": "Wednesday",
+    "event": "KidZania Koshien (English Day)",
+    "hotel": "RIHGA Royal Hotel Osaka",
+    "city": "Osaka",
+    "time": "3 PM check-in",
+    "details": "Vignette Collection",
+    "confirmation": "IHG reservation: 39405793",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "KidZania Koshien",
+        "url": "https://www.kidzania.jp/koshien/",
+        "map": "KidZania Koshien, Nishinomiya, Hyogo, Japan"
+      },
+      {
+        "name": "RIHGA Royal Hotel Osaka",
+        "url": "https://www.rihga.com/osaka",
+        "map": "RIHGA Royal Hotel Osaka, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-26",
+    "day": "Thursday",
+    "event": "Universal Studios Japan",
+    "hotel": "RIHGA Royal Hotel Osaka",
+    "city": "Osaka",
+    "time": "Arrive 7 AM",
+    "details": "USJ tickets sent by email — non-refundable!",
+    "confirmation": "14:50–15:50 Super Nintendo World entrance",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Universal Studios Japan",
+        "url": "https://www.usj.co.jp/web/en/us",
+        "map": "Universal Studios Japan, Osaka, Japan"
+      },
+      {
+        "name": "RIHGA Royal Hotel Osaka",
+        "url": "https://www.rihga.com/osaka",
+        "map": "RIHGA Royal Hotel Osaka, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-27",
+    "day": "Friday",
+    "event": "Osaka — Katsuoji Temple",
+    "hotel": "RIHGA Royal Hotel Osaka",
+    "city": "Osaka",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Katsuoji Temple",
+        "url": "https://katsuo-ji-temple.or.jp/",
+        "map": "Katsuoji Temple, Minoo, Osaka, Japan"
+      },
+      {
+        "name": "RIHGA Royal Hotel Osaka",
+        "url": "https://www.rihga.com/osaka",
+        "map": "RIHGA Royal Hotel Osaka, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-28",
+    "day": "Saturday",
+    "event": "F1 Suzuka GP Qualifying",
+    "hotel": "Daiwa Roynet Hotel Nagoya-Fushimi",
+    "city": "Nagoya",
+    "time": "8 AM checkout",
+    "details": "Head to Nagoya, 1 hr on Shinkansen",
+    "confirmation": "Agoda Booking: 585725307",
+    "subEvents": [
+      {
+        "time": "11:10 AM",
+        "name": "Kintetsu Express Nagoya → Shiroko (40m)",
+        "detail": "Res: DDDDDD — buy basic ticket at station with IC card"
+      },
+      {
+        "time": "5:57 PM",
+        "name": "Kintetsu Express Shiroko → Nagoya (40m)",
+        "detail": "Res: EEEEEE — buy basic ticket again"
+      }
+    ],
+    "links": [
+      {
+        "name": "Suzuka Circuit",
+        "url": "https://www.suzukacircuit.jp/en/",
+        "map": "Suzuka Circuit, Suzuka, Mie, Japan"
+      },
+      {
+        "name": "Daiwa Roynet Hotel Nagoya-Fushimi",
+        "url": "https://www.daiwaroynet.jp/en/nagoya-fushimi/",
+        "map": "Daiwa Roynet Hotel Nagoya Fushimi, Nagoya, Japan"
+      },
+      {
+        "name": "Kintetsu Nagoya Station",
+        "map": "Kintetsu Nagoya Station, Japan"
+      },
+      {
+        "name": "Shiroko Station",
+        "map": "Shiroko Station, Suzuka, Mie, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-29",
+    "day": "Sunday",
+    "event": "F1 Suzuka GP Race Day",
+    "hotel": "Daiwa Roynet Hotel Nagoya-Fushimi",
+    "city": "Nagoya",
+    "time": "",
+    "details": "F1 general West Side tickets",
+    "confirmation": "",
+    "subEvents": [
+      {
+        "time": "9:10 AM",
+        "name": "Kintetsu Express Nagoya → Shiroko",
+        "detail": "Res: FFFFFF"
+      },
+      {
+        "time": "6:10 PM",
+        "name": "Kintetsu Express Shiroko → Nagoya",
+        "detail": "Res: GGGGGG"
+      }
+    ],
+    "links": [
+      {
+        "name": "Suzuka Circuit",
+        "url": "https://www.suzukacircuit.jp/en/",
+        "map": "Suzuka Circuit, Suzuka, Mie, Japan"
+      },
+      {
+        "name": "Daiwa Roynet Hotel Nagoya-Fushimi",
+        "url": "https://www.daiwaroynet.jp/en/nagoya-fushimi/",
+        "map": "Daiwa Roynet Hotel Nagoya Fushimi, Nagoya, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-30",
+    "day": "Monday",
+    "event": "Tokyo Day 1",
+    "hotel": "OMO5 Otsuka by Hoshino Resorts",
+    "city": "Tokyo",
+    "time": "Checkout, head to Tokyo",
+    "details": "",
+    "confirmation": "Hoshino ref: 6gx4rc8194\nPassword: [REDACTED]",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "OMO5 Tokyo Otsuka",
+        "url": "https://hoshinoresorts.com/en/hotels/omo5tokyootsuka/",
+        "map": "OMO5 Tokyo Otsuka by Hoshino Resorts, Toshima, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-03-31",
+    "day": "Tuesday",
+    "event": "Tokyo Day 2",
+    "hotel": "OMO5 Otsuka",
+    "city": "Tokyo",
+    "time": "",
+    "details": "Sanrio cafe Ikebukuro snack?",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "OMO5 Tokyo Otsuka",
+        "url": "https://hoshinoresorts.com/en/hotels/omo5tokyootsuka/",
+        "map": "OMO5 Tokyo Otsuka by Hoshino Resorts, Toshima, Tokyo, Japan"
+      },
+      {
+        "name": "Sanrio Cafe Ikebukuro",
+        "url": "https://www.sanrio.co.jp/",
+        "map": "Sunshine City, Ikebukuro, Toshima, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-01",
+    "day": "Wednesday",
+    "event": "Tokyo Day 3 — KidZania English Day",
+    "hotel": "OMO5 Otsuka",
+    "city": "Tokyo",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "KidZania Tokyo",
+        "url": "https://www.kidzania.jp/tokyo/",
+        "map": "KidZania Tokyo, Koto, Tokyo, Japan"
+      },
+      {
+        "name": "OMO5 Tokyo Otsuka",
+        "url": "https://hoshinoresorts.com/en/hotels/omo5tokyootsuka/",
+        "map": "OMO5 Tokyo Otsuka by Hoshino Resorts, Toshima, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-02",
+    "day": "Thursday",
+    "event": "Tokyo Day 4",
+    "hotel": "OMO5 Otsuka",
+    "city": "Tokyo",
+    "time": "",
+    "details": "Play Museum or Sanrio Puroland",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "PLAY! MUSEUM",
+        "url": "https://play2020.jp/",
+        "map": "PLAY! MUSEUM, Tachikawa, Tokyo, Japan"
+      },
+      {
+        "name": "Sanrio Puroland",
+        "url": "https://www.puroland.jp/en/",
+        "map": "Sanrio Puroland, Tama, Tokyo, Japan"
+      },
+      {
+        "name": "OMO5 Tokyo Otsuka",
+        "url": "https://hoshinoresorts.com/en/hotels/omo5tokyootsuka/",
+        "map": "OMO5 Tokyo Otsuka by Hoshino Resorts, Toshima, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-03",
+    "day": "Friday",
+    "event": "Tokyo Day 5",
+    "hotel": "OMO5 Otsuka",
+    "city": "Tokyo",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "OMO5 Tokyo Otsuka",
+        "url": "https://hoshinoresorts.com/en/hotels/omo5tokyootsuka/",
+        "map": "OMO5 Tokyo Otsuka by Hoshino Resorts, Toshima, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-04",
+    "day": "Saturday",
+    "event": "Tokyo Day 6",
+    "hotel": "Tobu Hotel Levant Tokyo",
+    "city": "Tokyo",
+    "time": "Checkout and move hotels",
+    "details": "",
+    "confirmation": "Expedia itinerary: 64538809767066",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Tobu Hotel Levant Tokyo",
+        "url": "https://www.tobuhotel.co.jp/levant/en/",
+        "map": "Tobu Hotel Levant Tokyo, Sumida, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-05",
+    "day": "Sunday",
+    "event": "Tokyo Day 7",
+    "hotel": "Tobu Hotel Levant Tokyo",
+    "city": "Tokyo",
+    "time": "",
+    "details": "Meet up with Hannah",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Tobu Hotel Levant Tokyo",
+        "url": "https://www.tobuhotel.co.jp/levant/en/",
+        "map": "Tobu Hotel Levant Tokyo, Sumida, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-06",
+    "day": "Monday",
+    "event": "Tokyo Day 8",
+    "hotel": "Tobu Hotel Levant Tokyo",
+    "city": "Tokyo",
+    "time": "",
+    "details": "",
+    "confirmation": "",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Tobu Hotel Levant Tokyo",
+        "url": "https://www.tobuhotel.co.jp/levant/en/",
+        "map": "Tobu Hotel Levant Tokyo, Sumida, Tokyo, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-07",
+    "day": "Tuesday",
+    "event": "Tokyo Day 9",
+    "hotel": "Tokyo Disneyland Hotel",
+    "city": "Maihama",
+    "time": "Checkout and move to Maihama",
+    "details": "Character Disney's Cinderella Room (7th–9th floors).",
+    "confirmation": "TDR booking: 157029336",
+    "subEvents": [
+      {
+        "time": "1:40 PM",
+        "name": "Dreamer's Lounge (Special Set, Privileges)",
+        "detail": "Tokyo Disneyland Hotel"
+      },
+      {
+        "time": "8:40 PM",
+        "name": "BellaVista Lounge (Privileges)",
+        "detail": "Hotel MiraCosta"
+      }
+    ],
+    "links": [
+      {
+        "name": "Tokyo Disneyland Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/tdh.html",
+        "map": "Tokyo Disneyland Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Hotel MiraCosta (BellaVista)",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/dhm.html",
+        "map": "Tokyo DisneySea Hotel MiraCosta, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-08",
+    "day": "Wednesday",
+    "event": "Tokyo Disneyland",
+    "hotel": "Fantasy Springs Hotel",
+    "city": "Maihama",
+    "time": "",
+    "details": "Tokyo Disneyland 1-Day Passport (Vacation Package). Special Attraction Ticket (Tokyo Disneyland). Fantasy Chateau Dream Court Side Superior Alcove Room (Park View).",
+    "confirmation": "TDR direct booking",
+    "subEvents": [
+      {
+        "time": "7:10 AM",
+        "name": "Sherwood Garden Restaurant (Privileges)",
+        "detail": "Breakfast at Tokyo Disneyland Hotel"
+      },
+      {
+        "time": "11:15 AM",
+        "name": "Bibbidi Bobbidi Boutique",
+        "detail": "Tokyo Disneyland Hotel"
+      },
+      {
+        "time": "12:30 PM",
+        "name": "Crystal Palace Restaurant (Privileges)",
+        "detail": "Tokyo Disneyland"
+      },
+      {
+        "time": "5:30 PM",
+        "name": "Center Street Coffeehouse (Privileges)",
+        "detail": "Tokyo Disneyland"
+      }
+    ],
+    "links": [
+      {
+        "name": "Tokyo Disneyland",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Tokyo Disney Fantasy Springs Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/fsh.html",
+        "map": "Tokyo Disney Fantasy Springs Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Sherwood Garden Restaurant",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/tdh/restaurant.html",
+        "map": "Tokyo Disneyland Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Bibbidi Bobbidi Boutique",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/tdh/restaurant.html",
+        "map": "Tokyo Disneyland Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Crystal Palace Restaurant",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Center Street Coffeehouse",
+        "url": "https://www.tokyodisneyresort.jp/en/tdl/",
+        "map": "Tokyo Disneyland, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-09",
+    "day": "Thursday",
+    "event": "Tokyo DisneySea",
+    "hotel": "Fantasy Springs Hotel / Hotel MiraCosta",
+    "city": "Maihama",
+    "time": "",
+    "details": "Tokyo DisneySea 1-Day Passport (Vacation Package). Special Attraction Ticket (Tokyo DisneySea). Fantasy Springs Restaurant breakfast 7:00 AM (exclusive for Fantasy Springs Hotel guests). Paradis lounge open until 10 PM — no reservation taken. Hotels: Room 1 — MiraCosta Venice Side Superior Room; Room 2 — Fantasy Springs Fantasy Chateau Hotel Entrance Side Superior Room.",
+    "confirmation": "TDR booking: 851669624",
+    "subEvents": [
+      {
+        "time": "7:00 AM",
+        "name": "Fantasy Springs Restaurant (Vacation Package)",
+        "detail": "Breakfast, exclusive for Fantasy Springs Hotel guests"
+      }
+    ],
+    "links": [
+      {
+        "name": "Tokyo DisneySea",
+        "url": "https://www.tokyodisneyresort.jp/en/tds/",
+        "map": "Tokyo DisneySea, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Tokyo Disney Fantasy Springs Hotel",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/fsh.html",
+        "map": "Tokyo Disney Fantasy Springs Hotel, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Hotel MiraCosta",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/dhm.html",
+        "map": "Tokyo DisneySea Hotel MiraCosta, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Fantasy Springs Restaurant",
+        "url": "https://www.tokyodisneyresort.jp/en/hotel/fsh/restaurant.html",
+        "map": "Tokyo Disney Fantasy Springs Hotel, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-10",
+    "day": "Friday",
+    "event": "Tokyo DisneySea",
+    "hotel": "Hotel Okura Tokyo Bay",
+    "city": "Maihama",
+    "time": "",
+    "details": "Across from Fantasy Springs",
+    "confirmation": "Trivago booking: 97586613",
+    "subEvents": [],
+    "links": [
+      {
+        "name": "Tokyo DisneySea",
+        "url": "https://www.tokyodisneyresort.jp/en/tds/",
+        "map": "Tokyo DisneySea, Urayasu, Chiba, Japan"
+      },
+      {
+        "name": "Hotel Okura Tokyo Bay",
+        "url": "https://www.okuratokyobay.net/en/",
+        "map": "Hotel Okura Tokyo Bay, Urayasu, Chiba, Japan"
+      }
+    ]
+  },
+  {
+    "date": "2026-04-11",
+    "day": "Saturday",
+    "event": "Fly Home",
+    "hotel": "",
+    "city": "",
+    "time": "9:20 PM first flight (HND)",
+    "details": "Hawaiian Airlines segments: use HHHHHH on hawaiianairlines.com to select seats.",
+    "confirmation": "Alaska: AAAAAA | Hawaiian: HHHHHH (use for seat selection on Hawaiian site) | Passengers: Traveler A, Traveler B, Traveler C, Traveler D",
+    "subEvents": [
+      {
+        "time": "9:20 PM",
+        "name": "HA 832 HND → HNL",
+        "detail": "Tokyo Haneda → Honolulu. Arrives 10:00 AM same day."
+      },
+      {
+        "time": "12:10 PM",
+        "name": "HA 814 HNL → PDX",
+        "detail": "Honolulu → Portland. Arrives 8:48 PM."
+      },
+      {
+        "time": "9:40 PM",
+        "name": "AS 2057 PDX → RDM",
+        "detail": "Portland → Redmond/Bend. 48m. Arrives 10:28 PM."
+      }
+    ],
+    "links": [
+      {
+        "name": "Tokyo Haneda Airport (HND)",
+        "map": "Tokyo Haneda Airport, Japan"
+      },
+      {
+        "name": "Honolulu International (HNL)",
+        "map": "Honolulu International Airport, Hawaii"
+      },
+      {
+        "name": "Portland International (PDX)",
+        "map": "Portland International Airport, Oregon"
+      },
+      {
+        "name": "Redmond Municipal Airport (RDM)",
+        "map": "Redmond Municipal Airport, Bend, Oregon"
+      }
+    ]
+  }
+]
