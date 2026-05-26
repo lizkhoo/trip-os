@@ -24,7 +24,12 @@ expo-env.d.ts.bak
 dist/
 web-build/
 
-# Native build artifacts
+# Prebuild output — regenerate with `pnpm dlx expo prebuild --platform ios`.
+# Only Swift module sources under modules/AppleVision/ios/ are tracked.
+/ios/
+/android/
+
+# Native build artifacts (kept for safety even though /ios is excluded above)
 ios/Pods/
 ios/build/
 android/.gradle/

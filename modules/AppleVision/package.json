@@ -1,0 +1,9 @@
+{
+  "name": "apple-vision",
+  "version": "0.1.0",
+  "description": "On-device OCR via Apple Vision (VNRecognizeTextRequest). Rasterises PDFs through PDFKit so screenshots and multi-page PDFs share one entry point.",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "sideEffects": false
+}
