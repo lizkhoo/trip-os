@@ -17,10 +17,9 @@ export default function ReviewIndex() {
 
   const refresh = useCallback(async () => {
     const rows = await listPendingCandidates();
-    // listPendingCandidates returns rows without a created_at field. Sort by id as a stable
-    // proxy — Drizzle inserts assign uuid v4s, so this is effectively a usage-order arrival.
-    // (Adding created_at to the candidate domain would require a Foundation change.)
-    setItems([...rows].reverse());
+    // createdAt isn't exposed on ExtractionCandidate yet; insertion order is the closest
+    // proxy. Add createdAt to candidate.ts in a follow-up.
+    setItems(rows);
   }, []);
 
   useFocusEffect(

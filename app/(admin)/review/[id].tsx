@@ -12,6 +12,9 @@ import { ReservationInputSchema } from '@/domain/reservation';
 import type { Reservation, ReservationInput } from '@/domain/reservation';
 
 type AttachmentRow = Attachment;
+type MergedResult =
+  | { ok: true; value: ReservationInput }
+  | { ok: false; error: string };
 
 export default function ReviewDetail() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -39,9 +42,23 @@ export default function ReviewDetail() {
     })();
   }, [params.id]);
 
-  const merged = useMemo<ReservationInput | null>(() => {
+  /**
+   * Raw shallow merge for form display — the user may type invalid values mid-edit. The
+   * strict `parsed` below is what feeds MergeDiff and acceptCandidate.
+   */
+  const display = useMemo(() => {
     if (!candidate) return null;
-    return { ...candidate.proposed_reservation, ...edits } as ReservationInput;
+    return { ...candidate.proposed_reservation, ...edits };
+  }, [candidate, edits]);
+
+  const parsed = useMemo<MergedResult | null>(() => {
+    if (!candidate) return null;
+    const result = ReservationInputSchema.safeParse({
+      ...candidate.proposed_reservation,
+      ...edits,
+    });
+    if (result.success) return { ok: true, value: result.data };
+    return { ok: false, error: result.error.issues[0]?.message ?? 'Invalid candidate' };
   }, [candidate, edits]);
 
   const onAccept = useCallback(async () => {
@@ -70,7 +87,7 @@ export default function ReviewDetail() {
     }
   }, [candidate, router]);
 
-  if (!candidate || !merged) {
+  if (!candidate || !display || !parsed) {
     return <SafeAreaView className="flex-1 bg-paper" />;
   }
 
@@ -79,39 +96,48 @@ export default function ReviewDetail() {
       <Stack.Screen options={{ title: 'Candidate' }} />
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 96 }}>
         <View className="flex-row items-center gap-2 mb-2">
-          <ReservationBadge type={merged.type} />
+          <ReservationBadge type={display.type} />
           <ConfidenceChip value={candidate.confidence} />
         </View>
 
         <SourcePreview candidate={candidate} attachment={attachment} />
 
-        {existing ? <MergeDiff existing={existing} proposed={merged} /> : null}
+        {existing && parsed.ok ? (
+          <MergeDiff existing={existing} proposed={parsed.value} />
+        ) : existing && !parsed.ok ? (
+          <Card className="mb-3">
+            <Text className="text-xs uppercase tracking-widest text-accent-rust mb-1">
+              Invalid candidate
+            </Text>
+            <Text className="text-sm text-ink-soft">{parsed.error}</Text>
+          </Card>
+        ) : null}
 
         <Card className="mb-3">
           <Text className="text-xs uppercase tracking-widest text-ink-muted mb-2">Reservation</Text>
           <View className="gap-3">
             <Input
               label="Title"
-              value={merged.title}
+              value={display.title}
               onChangeText={(t) => setEdits((p) => ({ ...p, title: t }))}
             />
             <Input
               label="Start (ISO with offset)"
-              value={merged.start_at}
+              value={display.start_at}
               onChangeText={(t) => setEdits((p) => ({ ...p, start_at: t }))}
               autoCapitalize="none"
               autoCorrect={false}
             />
             <Input
               label="End"
-              value={merged.end_at ?? ''}
+              value={display.end_at ?? ''}
               onChangeText={(t) => setEdits((p) => ({ ...p, end_at: t || null }))}
               autoCapitalize="none"
               autoCorrect={false}
             />
             <Input
               label="Confirmation code"
-              value={merged.confirmation_code ?? ''}
+              value={display.confirmation_code ?? ''}
               onChangeText={(t) => setEdits((p) => ({ ...p, confirmation_code: t || null }))}
               autoCapitalize="none"
             />

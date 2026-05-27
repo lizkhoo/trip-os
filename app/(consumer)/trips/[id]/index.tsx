@@ -273,7 +273,6 @@ function DayBlock({ day, pairs, homeTimezone, onSelect }: DayBlockProps) {
   const dateLabel =
     d?.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) ?? day.date;
 
-  // Order reservations by start_at; multi-night lodging slots get a single "Night N of M" row.
   const sorted = [...day.reservations].sort((a, b) => a.start_at.localeCompare(b.start_at));
   const items: TimelineItem[] = sorted.map((r) => buildItem(r, day.date, homeTimezone));
 

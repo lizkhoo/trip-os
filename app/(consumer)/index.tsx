@@ -91,7 +91,6 @@ function TripRow({ trip }: { trip: Trip }) {
 }
 
 function formatRange(start: string, end: string): string {
-  // Both inputs are yyyy-mm-dd in the trip's home zone. Render as "Mar 14 – Mar 28, 2026".
   const s = parseYmd(start);
   const e = parseYmd(end);
   if (!s || !e) return `${start} – ${end}`;
