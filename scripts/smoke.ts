@@ -207,45 +207,115 @@ async function main() {
       blocks: [],
       pageImageUris: ['file:///tmp/fake-flight.jpg'],
     }),
-    extractReservationFromAttachment: async ({ source_ref }) => ({
-      proposed_reservation: {
-        trip_id: tripRow.id,
-        type: 'flight',
-        title: 'AS 338 RDM → SEA',
-        start_at: '2026-03-14T09:02:00-07:00',
-        source: 'upload',
-        source_ref,
+    extractReservationFromAttachment: async ({ source_ref, image_uris }) => {
+      assertPositive(
+        image_uris.length === 1 && image_uris[0] === 'file:///tmp/fake-flight.jpg',
+        'image path: extract receives the source URI as image_uris',
+      );
+      return {
+        proposed_reservation: {
+          trip_id: tripRow.id,
+          type: 'flight',
+          title: 'AS 338 RDM → SEA',
+          start_at: '2026-03-14T09:02:00-07:00',
+          source: 'upload',
+          source_ref,
+          confidence: 0.95,
+          status: 'confirmed',
+          details: {
+            carrier: 'AS',
+            flight_number: '338',
+            depart_iata: 'RDM',
+            arrive_iata: 'SEA',
+            iana_timezone: 'America/Los_Angeles',
+          },
+        } as ReservationInput,
         confidence: 0.95,
-        status: 'confirmed',
-        details: {
-          carrier: 'AS',
-          flight_number: '338',
-          depart_iata: 'RDM',
-          arrive_iata: 'SEA',
-          iana_timezone: 'America/Los_Angeles',
-        },
-      } as ReservationInput,
-      confidence: 0.95,
-      raw_claude_response: '{"mocked":true}',
+        raw_claude_response: '{"mocked":true}',
+      };
+    },
+  });
+
+  // PDF path: AppleVision returns one PNG per rasterised page and those URIs are what flows
+  // into extract, not the .pdf URI itself (Claude vision can't ingest PDF bytes).
+  await runSyncUploadNodeReplica(db, {
+    fakeSourceUri: '/tmp/fake-itinerary.pdf',
+    fakeKind: 'pdf',
+    recognizeText: async () => ({
+      text: 'Park Hyatt Tokyo 2026-04-02 check-in 15:00 JST\n\nNight 1 of 3',
+      blocks: [],
+      pageImageUris: [
+        'file:///tmp/apple-vision/run-1/page-1.png',
+        'file:///tmp/apple-vision/run-1/page-2.png',
+      ],
     }),
+    extractReservationFromAttachment: async ({ source_ref, image_uris }) => {
+      assertPositive(
+        image_uris.length === 2 &&
+          image_uris[0] === 'file:///tmp/apple-vision/run-1/page-1.png' &&
+          image_uris[1] === 'file:///tmp/apple-vision/run-1/page-2.png',
+        'pdf path: extract receives one image_uri per rasterised page',
+      );
+      return {
+        proposed_reservation: {
+          trip_id: tripRow.id,
+          type: 'lodging',
+          title: 'Park Hyatt Tokyo — 3 nights',
+          start_at: '2026-04-02T15:00:00+09:00',
+          end_at: '2026-04-05T11:00:00+09:00',
+          source: 'upload',
+          source_ref,
+          confidence: 0.92,
+          status: 'confirmed',
+          details: {
+            property_name: 'Park Hyatt Tokyo',
+            nights: 3,
+            iana_timezone: 'Asia/Tokyo',
+          },
+        } as ReservationInput,
+        confidence: 0.92,
+        raw_claude_response: '{"mocked":true,"pdf":true}',
+      };
+    },
   });
 
   const attachmentRows = db
-    .prepare(`SELECT id, extraction_run_id, ocr_text FROM attachments`)
-    .all() as Array<{ id: string; extraction_run_id: string; ocr_text: string | null }>;
+    .prepare(`SELECT id, kind, extraction_run_id, ocr_text FROM attachments`)
+    .all() as Array<{ id: string; kind: string; extraction_run_id: string; ocr_text: string | null }>;
   const uploadCandidates = db
-    .prepare(`SELECT id, source, source_ref, status FROM extraction_candidates WHERE source = 'upload'`)
-    .all() as Array<{ id: string; source: string; source_ref: string; status: string }>;
+    .prepare(
+      `SELECT id, source, source_ref, status, proposed_reservation FROM extraction_candidates WHERE source = 'upload'`,
+    )
+    .all() as Array<{
+      id: string;
+      source: string;
+      source_ref: string;
+      status: string;
+      proposed_reservation: string;
+    }>;
 
-  assertPositive(attachmentRows.length === 1, 'upload created 1 attachment row');
-  assertPositive(uploadCandidates.length === 1, 'upload created 1 candidate row');
-  const att = attachmentRows[0];
-  const cand = uploadCandidates[0];
-  assertPositive(
-    !!att && !!cand && att.extraction_run_id === cand.source_ref,
-    'attachment.extractionRunId === candidate.source_ref (acceptCandidate re-attach contract)',
+  assertPositive(attachmentRows.length === 2, 'upload created 2 attachment rows (image + pdf)');
+  assertPositive(uploadCandidates.length === 2, 'upload created 2 candidate rows (image + pdf)');
+  const pdfAtt = attachmentRows.find((r) => r.kind === 'pdf');
+  const pdfCand = uploadCandidates.find(
+    (c) => pdfAtt !== undefined && c.source_ref === pdfAtt.extraction_run_id,
   );
-  assertPositive(!!att?.ocr_text, 'attachment.ocr_text populated from AppleVision mock');
+  assertPositive(!!pdfAtt && !!pdfCand, 'pdf attachment + candidate linked by extraction_run_id');
+  if (pdfCand) {
+    const parsed = JSON.parse(pdfCand.proposed_reservation) as { type: string };
+    assertPositive(parsed.type === 'lodging', 'pdf candidate proposed_reservation has type=lodging');
+  }
+  for (const att of attachmentRows) {
+    assertPositive(
+      !!att.ocr_text,
+      `attachment(${att.kind}).ocr_text populated from AppleVision mock`,
+    );
+    const matchingCand = uploadCandidates.find((c) => c.source_ref === att.extraction_run_id);
+    assertPositive(
+      !!matchingCand,
+      `attachment(${att.kind}).extractionRunId === candidate.source_ref (acceptCandidate re-attach contract)`,
+    );
+  }
 
   console.log('\n✓ smoke test passed');
 }

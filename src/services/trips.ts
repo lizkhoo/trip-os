@@ -3,6 +3,7 @@ import { db } from '@/db/client';
 import { trips } from '@/db/schema';
 import { TripInputSchema, type Trip, type TripInput } from '@/domain/trip';
 import { newUuid } from '@/lib/uuid';
+import { dateInZone } from '@/lib/time';
 
 export async function createTrip(input: TripInput): Promise<Trip> {
   const parsed = TripInputSchema.parse(input);
@@ -45,6 +46,22 @@ export async function getTrip(id: string): Promise<Trip | undefined> {
 
 export async function deleteTrip(id: string): Promise<void> {
   await db.delete(trips).where(eq(trips.id, id));
+}
+
+/**
+ * Single-trip-match auto-assign. Returns the trip id when `startAt` (an ISO 8601 timestamp
+ * with offset) falls inside exactly one trip's [start_date, end_date] range, interpreted
+ * in that trip's home timezone. Zero or multiple matches → null — matches the "needs trip"
+ * inbox rule from the PRD. Shared by syncUpload and (TODO once Agent 2's PR #4 lands) syncGmail.
+ */
+export async function autoAssignTrip(startAt: string): Promise<string | null> {
+  const all = await db.select().from(trips);
+  const matches = all.filter((t) => {
+    const day = dateInZone(startAt, t.homeTimezone);
+    return day >= t.startDate && day <= t.endDate;
+  });
+  if (matches.length !== 1) return null;
+  return matches[0]?.id ?? null;
 }
 
 export async function findTripByTitle(title: string): Promise<Trip | undefined> {

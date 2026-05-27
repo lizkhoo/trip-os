@@ -1,12 +1,12 @@
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/db/client';
-import { attachments, settings as settingsTable, trips } from '@/db/schema';
+import { attachments, settings as settingsTable } from '@/db/schema';
 import { newUuid } from '@/lib/uuid';
-import { dateInZone } from '@/lib/time';
 import * as storage from './storage';
 import { extractReservationFromAttachment } from './extract';
 import { createCandidate, autoPromoteAboveThreshold } from './candidates';
 import { findDuplicateReservation } from './reservations';
+import { autoAssignTrip } from './trips';
 import { recognizeText } from '../../modules/AppleVision';
 import type { ReservationInput } from '@/domain/reservation';
 
@@ -72,6 +72,9 @@ export async function importFile(
       source_ref: extractionRunId,
     });
 
+    // The proposal is shaped by extractReservationFromAttachment, which casts Claude's tool
+    // output through `as unknown as ReservationInput` without a Zod parse. Treat these casts
+    // as load-bearing: when extract.ts grows an upstream parse, swap these for a safeParse here.
     const proposed: ReservationInput = {
       ...extraction.proposed_reservation,
       source: 'upload',
@@ -87,7 +90,7 @@ export async function importFile(
       return { attachmentId, candidateId: null, error: msg };
     }
 
-    const tripId = await autoAssignTrip(proposed);
+    const tripId = await autoAssignTrip(proposed.start_at);
     const proposedForTrip = tripId
       ? ({ ...proposed, trip_id: tripId } as ReservationInput)
       : proposed;
@@ -119,22 +122,6 @@ export async function importFile(
     onProgress('error', `extract: ${msg}`);
     return { attachmentId, candidateId: null, error: `extract: ${msg}` };
   }
-}
-
-/**
- * Single-trip-match auto-assign. Returns the trip id when the reservation's date falls inside
- * exactly one trip's range (interpreted in that trip's home timezone), otherwise null —
- * matching the "needs trip" inbox rule from the PRD.
- */
-async function autoAssignTrip(proposed: ReservationInput): Promise<string | null> {
-  const allTrips = await db.select().from(trips);
-  const start = proposed.start_at;
-  const matches = allTrips.filter((t) => {
-    const day = dateInZone(start, t.homeTimezone);
-    return day >= t.startDate && day <= t.endDate;
-  });
-  if (matches.length !== 1) return null;
-  return matches[0]?.id ?? null;
 }
 
 async function loadAutoPromoteThreshold(): Promise<number> {
