@@ -20,6 +20,12 @@ export interface ItineraryDay {
   lodging?: Reservation;
   /** Best-effort city name for this day. "Travel" when no lodging context applies. */
   city: string;
+  /**
+   * Optional grouping override. When set, getCityGroups groups consecutive days on this
+   * value instead of `city` (the day card still displays the actual `city`). Mirrors
+   * japan-2026's overviewCity rule that collapses adjacent micro-cities into one segment.
+   */
+  overviewCity?: string;
 }
 
 export interface CityGroup {
@@ -44,10 +50,13 @@ export interface TransitPair {
 export function getCityGroups(days: ItineraryDay[]): CityGroup[] {
   const groups: CityGroup[] = [];
   let current: CityGroup | null = null;
+  let currentNorm: string | null = null;
   for (const day of days) {
-    const norm = day.city || 'Travel';
-    if (!current || current.city !== norm) {
-      current = { city: norm, slug: '', days: [day] };
+    const norm = day.overviewCity ?? day.city ?? 'Travel';
+    const display = day.city || norm;
+    if (!current || currentNorm !== norm) {
+      current = { city: display, slug: '', days: [day] };
+      currentNorm = norm;
       groups.push(current);
     } else {
       current.days.push(day);

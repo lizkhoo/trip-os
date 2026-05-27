@@ -165,13 +165,18 @@ function MergeDiff({
   existing: Reservation;
   proposed: ReservationInput;
 }) {
-  const fields: Array<[string, string | null | undefined, string | null | undefined]> = [
+  const topLevel: DiffRow[] = [
     ['title', existing.title, proposed.title],
     ['start_at', existing.start_at, proposed.start_at],
     ['end_at', existing.end_at, proposed.end_at],
     ['confirmation_code', existing.confirmation_code, proposed.confirmation_code],
   ];
-  const changed = fields.filter(([, a, b]) => (a ?? '') !== (b ?? ''));
+  // Flight numbers, room types, etc. live under details — that's where most real
+  // conflicts surface, so include per-key diffs as `details.<key>`.
+  const detailRows = diffDetails(existing.details, proposed.details);
+  const changed = [...topLevel, ...detailRows].filter(
+    ([, a, b]) => (a ?? '') !== (b ?? ''),
+  );
   return (
     <Card className="mb-3">
       <Text className="text-xs uppercase tracking-widest text-ink-muted mb-2">
@@ -190,4 +195,26 @@ function MergeDiff({
       )}
     </Card>
   );
+}
+
+type DiffRow = [string, string | null | undefined, string | null | undefined];
+
+function diffDetails(a: Reservation['details'], b: ReservationInput['details']): DiffRow[] {
+  const keys = new Set<string>([
+    ...Object.keys(a as Record<string, unknown>),
+    ...Object.keys(b as Record<string, unknown>),
+  ]);
+  const rows: DiffRow[] = [];
+  for (const k of keys) {
+    const av = (a as Record<string, unknown>)[k];
+    const bv = (b as Record<string, unknown>)[k];
+    rows.push([`details.${k}`, formatDetail(av), formatDetail(bv)]);
+  }
+  return rows;
+}
+
+function formatDetail(v: unknown): string | null {
+  if (v === undefined || v === null) return null;
+  if (typeof v === 'string') return v;
+  return JSON.stringify(v);
 }

@@ -174,15 +174,20 @@ export default function TripDetail() {
             description="Pull down to sync from Gmail, or add one manually."
           />
         ) : (
-          groups.map((group) => (
-            <CitySegment
-              key={group.slug}
-              group={group}
-              homeTimezone={trip.home_timezone}
-              locById={locById}
-              onSelect={openDetail}
-            />
-          ))
+          groups.map((group, gi) => {
+            const prevSegment = gi > 0 ? groups[gi - 1] : undefined;
+            const priorDay = prevSegment?.days[prevSegment.days.length - 1];
+            return (
+              <CitySegment
+                key={group.slug}
+                group={group}
+                priorDay={priorDay}
+                homeTimezone={trip.home_timezone}
+                locById={locById}
+                onSelect={openDetail}
+              />
+            );
+          })
         )}
       </PullToRefresh>
 
@@ -209,14 +214,15 @@ export default function TripDetail() {
 
 interface CitySegmentProps {
   group: CityGroup;
+  /** Last day of the previous segment, if any. The first day of this segment uses its
+   *  lodging as the prevAnchor so the "Tokyo hotel → Kyoto Station" hop renders. */
+  priorDay?: ItineraryDay;
   homeTimezone: string;
   locById: Map<string, Location>;
   onSelect: (r: Reservation) => void;
 }
 
-function CitySegment({ group, homeTimezone, locById, onSelect }: CitySegmentProps) {
-  // The previous day's anchor lives just outside the segment's first day; we let each day
-  // resolve its own transit pairs by looking back one day inside the segment.
+function CitySegment({ group, priorDay, homeTimezone, locById, onSelect }: CitySegmentProps) {
   return (
     <View className="mb-6">
       <View className="flex-row items-baseline gap-2 mb-2 px-1">
@@ -226,7 +232,7 @@ function CitySegment({ group, homeTimezone, locById, onSelect }: CitySegmentProp
         </Text>
       </View>
       {group.days.map((day, i) => {
-        const prev = i > 0 ? group.days[i - 1] : undefined;
+        const prev = i > 0 ? group.days[i - 1] : priorDay;
         const prevAnchor = prev?.lodging ? lodgingAnchor(prev.lodging, locById) : undefined;
         const pairs = getTransitPairs(day.reservations, locById, prevAnchor);
         return (
