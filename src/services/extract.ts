@@ -1,4 +1,4 @@
-import type { ReservationProposal } from '@/domain/reservation';
+import { ReservationProposalSchema, type ReservationProposal } from '@/domain/reservation';
 import { getAnthropicKey } from './secrets';
 
 /**
@@ -12,11 +12,25 @@ import { getAnthropicKey } from './secrets';
  * extractReservationFromAttachment.
  */
 
-export interface ExtractionResult {
-  proposed_reservation: ReservationProposal;
-  confidence: number;
-  raw_claude_response: string;
-}
+/**
+ * Either Claude returned a parseable proposal (ok=true) or it didn't and we
+ * surface the parse error so the caller can skip + log instead of writing a
+ * confident-looking bad row. confidence is always present so consumers can
+ * short-circuit on threshold without branching.
+ */
+export type ExtractionResult =
+  | {
+      ok: true;
+      proposed_reservation: ReservationProposal;
+      confidence: number;
+      raw_claude_response: string;
+    }
+  | {
+      ok: false;
+      error: string;
+      confidence: 0;
+      raw_claude_response: string;
+    };
 
 export interface EmailExtractionArgs {
   raw_text: string;
@@ -63,71 +77,113 @@ OMIT optional fields you cannot determine — do not invent values. Title should
 
 interface ToolInputSchema {
   type: 'object';
-  properties: Record<string, unknown>;
-  required: string[];
-  additionalProperties: false;
+  oneOf: unknown[];
 }
 
 function buildToolSchema(): ToolInputSchema {
-  // Mirror of ReservationInputSchema (sans caller-set fields trip_id/source/source_ref).
-  return {
+  // Mirror of ReservationProposalSchema. The five reservation types share a
+  // common envelope but each pins its own `details` shape with
+  // additionalProperties: false so Claude can't smuggle in hallucinated keys.
+  const envelope = {
+    title: { type: 'string', description: 'Human-readable summary.' },
+    start_at: {
+      type: 'string',
+      description: 'ISO 8601 with explicit ±HH:MM offset.',
+    },
+    end_at: {
+      type: ['string', 'null'],
+      description: 'ISO 8601 with explicit ±HH:MM offset, or null.',
+    },
+    confirmation_code: { type: ['string', 'null'] },
+    status: {
+      type: 'string',
+      enum: ['confirmed', 'cancelled'],
+      default: 'confirmed',
+    },
+    confidence: {
+      type: 'number',
+      minimum: 0,
+      maximum: 1,
+      description: 'Self-assessed extraction quality.',
+    },
+  };
+
+  const ianaTimezone = {
+    type: 'string',
+    description: 'IANA timezone identifier, e.g. "America/Los_Angeles".',
+  };
+
+  const branch = (type: string, details: object) => ({
     type: 'object',
     properties: {
-      type: {
-        type: 'string',
-        enum: ['flight', 'lodging', 'dining', 'activity', 'transit'],
-      },
-      title: { type: 'string', description: 'Human-readable summary.' },
-      start_at: {
-        type: 'string',
-        description: 'ISO 8601 with explicit ±HH:MM offset.',
-      },
-      end_at: {
-        type: ['string', 'null'],
-        description: 'ISO 8601 with explicit ±HH:MM offset, or null.',
-      },
-      confirmation_code: { type: ['string', 'null'] },
-      status: {
-        type: 'string',
-        enum: ['confirmed', 'cancelled'],
-        default: 'confirmed',
-      },
-      confidence: {
-        type: 'number',
-        minimum: 0,
-        maximum: 1,
-        description: 'Self-assessed extraction quality.',
-      },
-      details: {
+      type: { type: 'string', const: type },
+      ...envelope,
+      details,
+    },
+    required: ['type', 'title', 'start_at', 'details', 'confidence'],
+    additionalProperties: false,
+  });
+
+  return {
+    type: 'object',
+    oneOf: [
+      branch('flight', {
         type: 'object',
-        description:
-          'Type-specific. Flight: {carrier, flight_number, depart_iata?, arrive_iata?, seat?, iana_timezone}. Lodging: {property_name, room_type?, nights?, iana_timezone}. Dining: {cuisine?, party_size?, iana_timezone}. Activity: {operator?, category?, iana_timezone}. Transit: {operator?, mode (train|bus|ferry|car|other), departure_station?, arrival_station?, iana_timezone}.',
         properties: {
           carrier: { type: 'string' },
           flight_number: { type: 'string' },
           depart_iata: { type: 'string' },
           arrive_iata: { type: 'string' },
           seat: { type: 'string' },
+          iana_timezone: ianaTimezone,
+        },
+        required: ['carrier', 'flight_number', 'iana_timezone'],
+        additionalProperties: false,
+      }),
+      branch('lodging', {
+        type: 'object',
+        properties: {
           property_name: { type: 'string' },
           room_type: { type: 'string' },
           nights: { type: 'integer' },
+          iana_timezone: ianaTimezone,
+        },
+        required: ['property_name', 'iana_timezone'],
+        additionalProperties: false,
+      }),
+      branch('dining', {
+        type: 'object',
+        properties: {
           cuisine: { type: 'string' },
           party_size: { type: 'integer' },
+          iana_timezone: ianaTimezone,
+        },
+        required: ['iana_timezone'],
+        additionalProperties: false,
+      }),
+      branch('activity', {
+        type: 'object',
+        properties: {
           operator: { type: 'string' },
           category: { type: 'string' },
+          iana_timezone: ianaTimezone,
+        },
+        required: ['iana_timezone'],
+        additionalProperties: false,
+      }),
+      branch('transit', {
+        type: 'object',
+        properties: {
+          operator: { type: 'string' },
           mode: { type: 'string', enum: ['train', 'bus', 'ferry', 'car', 'other'] },
           departure_station: { type: 'string' },
           arrival_station: { type: 'string' },
-          iana_timezone: {
-            type: 'string',
-            description: 'IANA timezone identifier, e.g. "America/Los_Angeles".',
-          },
+          iana_timezone: ianaTimezone,
         },
         required: ['iana_timezone'],
-      },
-    },
-    required: ['type', 'title', 'start_at', 'details', 'confidence'],
-    additionalProperties: false,
+        additionalProperties: false,
+      }),
+    ],
   };
 }
 
@@ -208,21 +264,26 @@ function pluckToolInput(resp: ClaudeResponse): Record<string, unknown> {
   return block.input;
 }
 
-function toReservationProposal(
+function parseToolInput(
   toolInput: Record<string, unknown>,
   sourceRef: string,
   source: 'gmail' | 'upload',
-): { proposed: ReservationProposal; confidence: number } {
-  const confidence = typeof toolInput.confidence === 'number' ? toolInput.confidence : 0;
-  // The tool input mirrors ReservationProposal — we just stamp the caller-set
-  // source fields and let the consumer's Zod parse catch any drift.
-  const proposed = {
+):
+  | { ok: true; proposed: ReservationProposal; confidence: number }
+  | { ok: false; error: string } {
+  // The tool input mirrors ReservationProposal — stamp the caller-set source
+  // fields, then Zod-parse so a hallucinated payload is caught here instead of
+  // propagating as a confident-looking bad row.
+  const candidate = {
     ...toolInput,
     source,
     source_ref: sourceRef,
-    confidence,
-  } as unknown as ReservationProposal;
-  return { proposed, confidence };
+  };
+  const parsed = ReservationProposalSchema.safeParse(candidate);
+  if (!parsed.success) {
+    return { ok: false, error: parsed.error.message };
+  }
+  return { ok: true, proposed: parsed.data, confidence: parsed.data.confidence ?? 0 };
 }
 
 export async function extractReservationFromEmail(
@@ -239,11 +300,16 @@ export async function extractReservationFromEmail(
   ]);
 
   const toolInput = pluckToolInput(resp);
-  const { proposed, confidence } = toReservationProposal(toolInput, args.message_id, 'gmail');
+  const raw = JSON.stringify(resp);
+  const result = parseToolInput(toolInput, args.message_id, 'gmail');
+  if (!result.ok) {
+    return { ok: false, error: result.error, confidence: 0, raw_claude_response: raw };
+  }
   return {
-    proposed_reservation: proposed,
-    confidence,
-    raw_claude_response: JSON.stringify(resp),
+    ok: true,
+    proposed_reservation: result.proposed,
+    confidence: result.confidence,
+    raw_claude_response: raw,
   };
 }
 
@@ -281,11 +347,16 @@ export async function extractReservationFromAttachment(
   ]);
 
   const toolInput = pluckToolInput(resp);
-  const { proposed, confidence } = toReservationProposal(toolInput, args.source_ref, 'upload');
+  const raw = JSON.stringify(resp);
+  const result = parseToolInput(toolInput, args.source_ref, 'upload');
+  if (!result.ok) {
+    return { ok: false, error: result.error, confidence: 0, raw_claude_response: raw };
+  }
   return {
-    proposed_reservation: proposed,
-    confidence,
-    raw_claude_response: JSON.stringify(resp),
+    ok: true,
+    proposed_reservation: result.proposed,
+    confidence: result.confidence,
+    raw_claude_response: raw,
   };
 }
 

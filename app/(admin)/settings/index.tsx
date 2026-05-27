@@ -1,15 +1,20 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
+import Slider from '@react-native-community/slider';
 import { eq } from 'drizzle-orm';
 import { Button, Card, Input } from '@/components/ui';
 import { db } from '@/db/client';
 import { settings } from '@/db/schema';
 import { setAnthropicKey, getAnthropicKey, clearAnthropicKey } from '@/services/secrets';
 
+const THRESHOLD_MIN = 0.5;
+const THRESHOLD_MAX = 1.0;
+const THRESHOLD_STEP = 0.05;
+
 const SETTINGS_ID = 'default';
 
 interface SettingsState {
-  autoPromoteThreshold: string;
+  autoPromoteThreshold: number;
   gmailLabelName: string;
   senderAllowlist: string[];
 }
@@ -18,7 +23,7 @@ export default function SettingsScreen() {
   const [hasKey, setHasKey] = useState(false);
   const [keyInput, setKeyInput] = useState('');
   const [state, setState] = useState<SettingsState>({
-    autoPromoteThreshold: '0.9',
+    autoPromoteThreshold: 0.9,
     gmailLabelName: 'trip-os/inbox',
     senderAllowlist: [],
   });
@@ -39,7 +44,7 @@ export default function SettingsScreen() {
         allowlist = [];
       }
       setState({
-        autoPromoteThreshold: String(row.autoPromoteThreshold),
+        autoPromoteThreshold: row.autoPromoteThreshold,
         gmailLabelName: row.gmailLabelName,
         senderAllowlist: allowlist,
       });
@@ -64,7 +69,9 @@ export default function SettingsScreen() {
 
   const persistSettings = useCallback(
     async (next: SettingsState) => {
-      const threshold = clamp(parseFloat(next.autoPromoteThreshold) || 0.9, 0.5, 1);
+      // Defense-in-depth clamp — the slider already pins values to range, but
+      // the threshold field is the kind of thing future code might mutate.
+      const threshold = clamp(next.autoPromoteThreshold, THRESHOLD_MIN, THRESHOLD_MAX);
       setBusy(true);
       try {
         await db
@@ -108,8 +115,8 @@ export default function SettingsScreen() {
   );
 
   const updateThreshold = useCallback(
-    async (s: string) => {
-      const next = { ...state, autoPromoteThreshold: s };
+    async (n: number) => {
+      const next = { ...state, autoPromoteThreshold: n };
       setState(next);
       await persistSettings(next);
     },
@@ -162,13 +169,21 @@ export default function SettingsScreen() {
           Auto-promote threshold
         </Text>
         <Text className="text-xs text-ink-muted mb-2">
-          Candidates with confidence ≥ this commit automatically. Range 0.5–1.0.
+          Candidates with confidence ≥ this commit automatically.
         </Text>
-        <Input
-          keyboardType="decimal-pad"
-          value={state.autoPromoteThreshold}
-          onChangeText={updateThreshold}
-        />
+        <View className="flex-row items-center gap-3">
+          <Slider
+            style={{ flex: 1 }}
+            minimumValue={THRESHOLD_MIN}
+            maximumValue={THRESHOLD_MAX}
+            step={THRESHOLD_STEP}
+            value={state.autoPromoteThreshold}
+            onSlidingComplete={updateThreshold}
+          />
+          <Text className="text-base text-ink font-mono w-12 text-right">
+            {state.autoPromoteThreshold.toFixed(2)}
+          </Text>
+        </View>
       </Card>
 
       <Card className="mb-4">

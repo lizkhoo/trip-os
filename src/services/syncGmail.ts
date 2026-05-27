@@ -1,9 +1,13 @@
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { extractionCandidates, gmailSyncState, settings, trips } from '@/db/schema';
 import { autoPromoteAboveThreshold, createCandidate } from './candidates';
 import { extractReservationFromEmailViaHatch } from './extract';
-import { fetchMessageViaHatch, searchMessageIdsViaHatch } from './gmail';
+import {
+  fetchMessageViaHatch,
+  getProfileViaHatch,
+  searchMessageIdsViaHatch,
+} from './gmail';
 import { findDuplicateReservation } from './reservations';
 import { dateInZone, nowIso } from '@/lib/time';
 
@@ -28,6 +32,13 @@ export async function runGmailSync(): Promise<SyncResult> {
   const query = buildQuery(cfg.senderAllowlist, cfg.gmailLabelName);
   const after = cfg.lastSyncedAt ? toGmailDate(cfg.lastSyncedAt) : daysAgoGmailDate(DEFAULT_LOOKBACK_DAYS);
 
+  // Snapshot the inbox's history id at the start of the run so we can resume
+  // from history.list next time without re-scanning everything. We record it
+  // even if the run fails partway — the candidates we did insert are dedup'd
+  // by source_ref, so the worst case is missing a few messages until the
+  // user hits "Sync now" again.
+  const profile = await getProfileViaHatch();
+
   const ids = await searchMessageIdsViaHatch(query, after);
   const seen = await loadSeenSourceRefs();
 
@@ -42,6 +53,11 @@ export async function runGmailSync(): Promise<SyncResult> {
       raw_text: text,
       message_id: id,
     });
+
+    if (!extraction.ok) {
+      console.warn(`[gmail] skipping ${id}: extraction parse failed — ${extraction.error}`);
+      continue;
+    }
 
     // PRD §"Cross-cutting": refuse to commit a candidate without an explicit
     // IANA zone. Better to drop a row than poison the trip with bad timestamps.
@@ -79,7 +95,7 @@ export async function runGmailSync(): Promise<SyncResult> {
   }
 
   const promoted = await autoPromoteAboveThreshold(cfg.autoPromoteThreshold);
-  await updateLastSyncedAt();
+  await updateLastSyncedAt(profile.historyId);
 
   return { candidatesCreated, promoted };
 }
@@ -156,13 +172,14 @@ async function autoAssignTrip(startAt: string): Promise<string | null> {
   return matches.length === 1 ? (matches[0]?.id ?? null) : null;
 }
 
-async function updateLastSyncedAt(): Promise<void> {
+async function updateLastSyncedAt(historyId: string): Promise<void> {
+  const now = nowIso();
   await db
     .insert(gmailSyncState)
-    .values({ id: SYNC_STATE_ID, lastSyncedAt: nowIso() })
+    .values({ id: SYNC_STATE_ID, lastSyncedAt: now, lastHistoryId: historyId })
     .onConflictDoUpdate({
       target: gmailSyncState.id,
-      set: { lastSyncedAt: nowIso() },
+      set: { lastSyncedAt: now, lastHistoryId: historyId },
     });
 }
 
@@ -175,7 +192,3 @@ export {
   type ExtractionResult,
 } from './extract';
 export { __setGmailForTest, type GmailAdapter } from './gmail';
-
-// Suppress unused-import warning for `and` — it's part of drizzle's API surface
-// the file may grow into when we add finer-grained queries.
-void and;

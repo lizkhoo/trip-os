@@ -286,6 +286,7 @@ async function main() {
       const m = mockExtractions.get(message_id);
       if (!m) throw new Error(`unknown mock extraction ${message_id}`);
       return {
+        ok: true,
         proposed_reservation: m.reservation,
         confidence: m.confidence,
         raw_claude_response: '{"mocked":true}',
@@ -321,11 +322,15 @@ interface NodeReplicaDeps {
     date: string;
     snippet: string;
   }>;
-  extractReservationFromEmail: (args: { raw_text: string; message_id: string }) => Promise<{
-    proposed_reservation: ReservationProposal;
-    confidence: number;
-    raw_claude_response: string;
-  }>;
+  extractReservationFromEmail: (args: { raw_text: string; message_id: string }) => Promise<
+    | {
+        ok: true;
+        proposed_reservation: ReservationProposal;
+        confidence: number;
+        raw_claude_response: string;
+      }
+    | { ok: false; error: string; confidence: 0; raw_claude_response: string }
+  >;
 }
 
 async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaDeps): Promise<void> {
@@ -372,6 +377,7 @@ async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaD
     const msg = await deps.fetchMessage(id);
     const text = `Subject: ${msg.subject}\nFrom: ${msg.from}\n\n${msg.bodyText}`;
     const ext = await deps.extractReservationFromEmail({ raw_text: text, message_id: id });
+    if (!ext.ok) continue;
 
     const start = ext.proposed_reservation.start_at;
     const matching = trips.filter((t) => {

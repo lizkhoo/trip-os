@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { getGmailTokens, setGmailTokens, type GmailTokens } from './secrets';
 
 /**
@@ -27,9 +28,31 @@ export interface GmailAttachment {
   mimeType: string;
 }
 
+/**
+ * Surface attachment metadata so callers can pick the right MIME before
+ * pulling the bytes. Gmail only ships MIME on the parent message's part
+ * tree — the /attachments/:id endpoint returns raw bytes only.
+ */
+export interface GmailAttachmentMeta {
+  attachmentId: string;
+  filename: string;
+  mimeType: string;
+}
+
+export interface GmailProfile {
+  historyId: string;
+}
+
 interface GmailListResponse {
   messages?: { id: string; threadId: string }[];
   nextPageToken?: string;
+}
+
+interface GmailProfileResponse {
+  emailAddress?: string;
+  historyId?: string;
+  messagesTotal?: number;
+  threadsTotal?: number;
 }
 
 interface GmailMessagePart {
@@ -55,9 +78,7 @@ interface GmailAttachmentResponse {
 
 function getClientId(): string {
   // Loaded from app.config.ts extra. The user pastes their own in README setup.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const Constants = require('expo-constants').default;
-  const id = Constants?.expoConfig?.extra?.googleClientId;
+  const id = Constants.expoConfig?.extra?.googleClientId;
   if (!id || typeof id !== 'string') {
     throw new Error(
       'googleClientId not set in app.config.ts extra — paste your iOS OAuth client id (see README).',
@@ -204,9 +225,16 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+/**
+ * Fetch the raw bytes for an attachment. Gmail's /attachments/:id endpoint
+ * doesn't echo MIME, so the caller is responsible for passing the mimeType
+ * read from the parent message's part metadata — call `listAttachments`
+ * first if you don't already have it.
+ */
 export async function getAttachment(
   messageId: string,
   attachmentId: string,
+  mimeType: string,
 ): Promise<GmailAttachment> {
   const res = await authedFetch(`/messages/${messageId}/attachments/${attachmentId}`);
   if (!res.ok) {
@@ -215,8 +243,50 @@ export async function getAttachment(
   const json = (await res.json()) as GmailAttachmentResponse;
   return {
     bytes: json.data.replace(/-/g, '+').replace(/_/g, '/'),
-    mimeType: 'application/octet-stream',
+    mimeType,
   };
+}
+
+/**
+ * Walk the message's part tree and return metadata for every part that has
+ * an attachmentId. Use this to look up the MIME for getAttachment.
+ */
+export async function listAttachments(messageId: string): Promise<GmailAttachmentMeta[]> {
+  const res = await authedFetch(`/messages/${messageId}?format=full`);
+  if (!res.ok) {
+    throw new Error(`Gmail listAttachments failed: ${res.status} ${await res.text()}`);
+  }
+  const json = (await res.json()) as GmailMessageResponse;
+  const out: GmailAttachmentMeta[] = [];
+  const walk = (part?: GmailMessagePart) => {
+    if (!part) return;
+    if (part.body?.attachmentId) {
+      out.push({
+        attachmentId: part.body.attachmentId,
+        filename: part.filename ?? '',
+        mimeType: part.mimeType ?? 'application/octet-stream',
+      });
+    }
+    for (const sub of part.parts ?? []) walk(sub);
+  };
+  walk(json.payload);
+  return out;
+}
+
+/**
+ * Return the user's current Gmail history id — used by sync state to mark
+ * the "we've caught up to here" cursor for future history.list calls.
+ */
+export async function getProfile(): Promise<GmailProfile> {
+  const res = await authedFetch(`/profile`);
+  if (!res.ok) {
+    throw new Error(`Gmail getProfile failed: ${res.status} ${await res.text()}`);
+  }
+  const json = (await res.json()) as GmailProfileResponse;
+  if (!json.historyId) {
+    throw new Error('Gmail getProfile: response missing historyId');
+  }
+  return { historyId: json.historyId };
 }
 
 // --- Test hatch -----------------------------------------------------------------
@@ -224,6 +294,8 @@ export interface GmailAdapter {
   searchMessageIds: typeof searchMessageIds;
   fetchMessage: typeof fetchMessage;
   getAttachment: typeof getAttachment;
+  listAttachments: typeof listAttachments;
+  getProfile: typeof getProfile;
 }
 
 let testAdapter: GmailAdapter | null = null;
@@ -243,6 +315,15 @@ export async function fetchMessageViaHatch(id: string): Promise<GmailMessageSumm
 export async function getAttachmentViaHatch(
   messageId: string,
   attachmentId: string,
+  mimeType: string,
 ): Promise<GmailAttachment> {
-  return (testAdapter?.getAttachment ?? getAttachment)(messageId, attachmentId);
+  return (testAdapter?.getAttachment ?? getAttachment)(messageId, attachmentId, mimeType);
+}
+
+export async function listAttachmentsViaHatch(messageId: string): Promise<GmailAttachmentMeta[]> {
+  return (testAdapter?.listAttachments ?? listAttachments)(messageId);
+}
+
+export async function getProfileViaHatch(): Promise<GmailProfile> {
+  return (testAdapter?.getProfile ?? getProfile)();
 }
