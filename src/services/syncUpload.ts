@@ -79,24 +79,35 @@ export async function importFile(
       confidence: extraction.confidence,
     } as ReservationInput;
 
+    const ianaTz =
+      (proposed.details as { iana_timezone?: unknown } | undefined)?.iana_timezone;
+    if (typeof ianaTz !== 'string' || ianaTz.length === 0) {
+      const msg = 'missing IANA timezone';
+      onProgress('error', msg);
+      return { attachmentId, candidateId: null, error: msg };
+    }
+
     const tripId = await autoAssignTrip(proposed);
+    const proposedForTrip = tripId
+      ? ({ ...proposed, trip_id: tripId } as ReservationInput)
+      : proposed;
+
+    // Surface duplicates by stamping merged_into_reservation_id on the candidate when one
+    // is found. Status stays 'pending' so the user accepts/rejects in review; only
+    // acceptCandidate / autoPromoteAboveThreshold flips status to 'merged_into'.
+    const dup = tripId !== null ? await findDuplicateReservation(proposedForTrip) : undefined;
+
     const candidate = await createCandidate({
       trip_id: tripId,
       source: 'upload',
       source_ref: extractionRunId,
       raw_text: ocrText,
       claude_response: extraction.raw_claude_response,
-      proposed_reservation: tripId ? ({ ...proposed, trip_id: tripId } as ReservationInput) : proposed,
+      proposed_reservation: proposedForTrip,
       confidence: extraction.confidence,
       status: 'pending',
+      merged_into_reservation_id: dup?.id ?? null,
     });
-
-    // findDuplicateReservation runs against the assigned trip; only meaningful when we have one.
-    // We don't act on the result here — autoPromote handles the merge-vs-accept decision — but
-    // calling it surfaces the duplicate intent in logs and matches Agent 2's flow.
-    if (tripId) {
-      await findDuplicateReservation({ ...proposed, trip_id: tripId } as ReservationInput);
-    }
 
     const threshold = await loadAutoPromoteThreshold();
     await autoPromoteAboveThreshold(threshold);

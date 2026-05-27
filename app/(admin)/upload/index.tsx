@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Image, Linking, ScrollView, Text, View } from 'react-native';
+import { Image, Linking, Pressable, ScrollView, Text, View } from 'react-native';
+import { Link } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Button, Card, EmptyState } from '@/components/ui';
@@ -8,6 +9,7 @@ import {
   listRecentAttachments,
   type ImportStep,
 } from '@/services/syncUpload';
+import { getCandidateBySourceRef } from '@/services/candidates';
 
 interface JobRow {
   id: string;
@@ -25,6 +27,8 @@ interface RecentRow {
   storageUri: string;
   kind: string;
   createdAt: string;
+  /** Resolved from extraction_run_id → candidate.source_ref; null while in-flight or on failure. */
+  candidateId: string | null;
 }
 
 function stepLabel(step: ImportStep): string {
@@ -49,14 +53,21 @@ export default function UploadScreen() {
 
   const refreshRecent = useCallback(async () => {
     const rows = await listRecentAttachments(20);
-    setRecent(
-      rows.map((r) => ({
-        id: r.id,
-        storageUri: r.storageUri,
-        kind: r.kind,
-        createdAt: r.createdAt,
-      })),
+    const enriched = await Promise.all(
+      rows.map(async (r) => {
+        const cand = r.extractionRunId
+          ? await getCandidateBySourceRef(r.extractionRunId)
+          : undefined;
+        return {
+          id: r.id,
+          storageUri: r.storageUri,
+          kind: r.kind,
+          createdAt: r.createdAt,
+          candidateId: cand?.id ?? null,
+        };
+      }),
     );
+    setRecent(enriched);
   }, []);
 
   useEffect(() => {
@@ -223,18 +234,27 @@ export default function UploadScreen() {
             <Text className="font-serif text-xl text-ink">Recent</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} className="gap-2">
               <View className="flex-row gap-2">
-                {recent.map((r) => (
-                  <View
-                    key={r.id}
-                    className="w-20 h-20 rounded-lg overflow-hidden bg-paper-dim items-center justify-center"
-                  >
-                    {r.kind === 'image' ? (
-                      <Image source={{ uri: r.storageUri }} className="w-full h-full" />
-                    ) : (
-                      <Text className="text-ink-muted text-xs">PDF</Text>
-                    )}
-                  </View>
-                ))}
+                {recent.map((r) => {
+                  const thumb = (
+                    <View className="w-20 h-20 rounded-lg overflow-hidden bg-paper-dim items-center justify-center">
+                      {r.kind === 'image' ? (
+                        <Image source={{ uri: r.storageUri }} className="w-full h-full" />
+                      ) : (
+                        <Text className="text-ink-muted text-xs">PDF</Text>
+                      )}
+                    </View>
+                  );
+                  // Link to the review candidate created from this attachment. While extraction is
+                  // in-flight (or has failed) the candidate row doesn't exist yet, so render the
+                  // thumbnail bare — a stale thumbnail without a link is better than a dead link.
+                  return r.candidateId ? (
+                    <Link key={r.id} href={`/admin/review/${r.candidateId}`} asChild>
+                      <Pressable>{thumb}</Pressable>
+                    </Link>
+                  ) : (
+                    <View key={r.id}>{thumb}</View>
+                  );
+                })}
               </View>
             </ScrollView>
           </View>

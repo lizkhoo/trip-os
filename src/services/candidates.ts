@@ -70,6 +70,17 @@ export async function getCandidate(id: string): Promise<ExtractionCandidate | un
   return row ? toDomain(row) : undefined;
 }
 
+export async function getCandidateBySourceRef(
+  sourceRef: string,
+): Promise<ExtractionCandidate | undefined> {
+  const row = await db
+    .select()
+    .from(extractionCandidates)
+    .where(eq(extractionCandidates.sourceRef, sourceRef))
+    .get();
+  return row ? toDomain(row) : undefined;
+}
+
 /**
  * Accept a pending candidate: create the reservation, mark the candidate
  * accepted, attach any pending attachments tied to the same source_ref.
