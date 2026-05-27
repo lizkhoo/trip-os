@@ -14,7 +14,11 @@ import * as path from 'node:path';
 import Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { runSeedWithDeps } from './seed';
-import { ReservationInputSchema, type ReservationInput } from '@/domain/reservation';
+import {
+  ReservationInputSchema,
+  type ReservationInput,
+  type ReservationProposal,
+} from '@/domain/reservation';
 import { computeDedupKey, keysMatch } from '@/services/dedup';
 
 const ROOT = path.resolve(__dirname, '..');
@@ -191,10 +195,8 @@ async function main() {
   // Gmail-sync smoke: two mock messages, one high-confidence and one low, both
   // landing inside the seeded Japan trip's range so trip auto-assignment fires.
   // Asserts: 2 candidates created; 1 auto-promoted when confidence ≥ threshold.
-  const tripRow = db.prepare(`SELECT id, home_timezone FROM trips LIMIT 1`).get() as
-    | { id: string; home_timezone: string }
-    | undefined;
-  if (!tripRow) {
+  const tripCount = (db.prepare(`SELECT COUNT(*) AS n FROM trips`).get() as { n: number }).n;
+  if (tripCount === 0) {
     console.error('✗ no trip from seed');
     process.exit(1);
   }
@@ -217,13 +219,14 @@ async function main() {
     ],
   ]);
 
-  const mockExtractions = new Map<string, { confidence: number; reservation: ReservationInput }>([
+  // Proposals carry no trip_id — that lives on the candidate row (auto-assigned)
+  // or is supplied by the user at accept time.
+  const mockExtractions = new Map<string, { confidence: number; reservation: ReservationProposal }>([
     [
       'msg-flight-hi',
       {
         confidence: 0.95,
         reservation: {
-          trip_id: tripRow.id,
           type: 'flight',
           title: 'AS 338 RDM → SEA',
           start_at: '2026-03-14T09:02:00-07:00',
@@ -238,7 +241,7 @@ async function main() {
             arrive_iata: 'SEA',
             iana_timezone: 'America/Los_Angeles',
           },
-        } as ReservationInput,
+        } as ReservationProposal,
       },
     ],
     [
@@ -246,7 +249,6 @@ async function main() {
       {
         confidence: 0.6,
         reservation: {
-          trip_id: tripRow.id,
           type: 'dining',
           title: 'Sushi Saito',
           start_at: '2026-03-21T19:00:00+09:00',
@@ -258,7 +260,7 @@ async function main() {
             party_size: 2,
             iana_timezone: 'Asia/Tokyo',
           },
-        } as ReservationInput,
+        } as ReservationProposal,
       },
     ],
   ]);
@@ -305,6 +307,9 @@ async function main() {
 
 // Node-side replica of runGmailSync. Mirrors the orchestrator's logic but uses
 // better-sqlite3 prepared statements directly so it works without expo-sqlite.
+// TODO: collapse into a thin in-memory-DB version of runGmailSync once we
+// abstract the drizzle client behind a small port — currently the production
+// module pins expo-sqlite at import time, which we can't bring into Node.
 // If you change runGmailSync's logic, keep this in sync.
 interface NodeReplicaDeps {
   searchMessageIds: (q: string, after?: string) => Promise<string[]>;
@@ -317,7 +322,7 @@ interface NodeReplicaDeps {
     snippet: string;
   }>;
   extractReservationFromEmail: (args: { raw_text: string; message_id: string }) => Promise<{
-    proposed_reservation: ReservationInput;
+    proposed_reservation: ReservationProposal;
     confidence: number;
     raw_claude_response: string;
   }>;
@@ -374,7 +379,7 @@ async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaD
       const day = new Date(start).toISOString().slice(0, 10);
       return day >= t.start_date && day <= t.end_date;
     });
-    const tripId = matching.length === 1 ? (matching[0]?.id ?? null) : ext.proposed_reservation.trip_id ?? null;
+    const tripId = matching.length === 1 ? (matching[0]?.id ?? null) : null;
 
     insertCand.run(
       uuidv4(),
@@ -382,7 +387,8 @@ async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaD
       id,
       text,
       ext.raw_claude_response,
-      JSON.stringify({ ...ext.proposed_reservation, trip_id: tripId ?? '00000000-0000-0000-0000-000000000000' }),
+      // Stored proposal carries NO trip_id — the candidate row owns that.
+      JSON.stringify(ext.proposed_reservation),
       ext.confidence,
     );
   }
@@ -401,7 +407,7 @@ async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaD
   }>;
   for (const cand of pending) {
     if (!cand.trip_id) continue;
-    const proposed = JSON.parse(cand.proposed_reservation) as ReservationInput;
+    const proposed = JSON.parse(cand.proposed_reservation) as ReservationProposal;
     const resId = uuidv4();
     insertRes.run(
       resId,

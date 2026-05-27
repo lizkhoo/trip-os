@@ -1,18 +1,19 @@
-import type { ReservationInput } from '@/domain/reservation';
+import type { ReservationProposal } from '@/domain/reservation';
 import { getAnthropicKey } from './secrets';
 
 /**
  * Canonical Claude extraction. Tool-use mode with a single tool whose
- * input_schema mirrors ReservationInputSchema (minus caller-set fields), and
- * prompt caching on the frozen system prompt — every call shares the same
- * preamble so a cache read after the first request is ~10x cheaper.
+ * input_schema mirrors ReservationProposalSchema (caller-set fields like
+ * trip_id are merged later, at candidate-accept time), and prompt caching on
+ * the frozen system prompt — every call shares the same preamble so a cache
+ * read after the first request is ~10x cheaper.
  *
  * Function signatures are load-bearing: Agent 3 (upload + OCR) consumes
  * extractReservationFromAttachment.
  */
 
 export interface ExtractionResult {
-  proposed_reservation: ReservationInput;
+  proposed_reservation: ReservationProposal;
   confidence: number;
   raw_claude_response: string;
 }
@@ -207,22 +208,20 @@ function pluckToolInput(resp: ClaudeResponse): Record<string, unknown> {
   return block.input;
 }
 
-function toReservationInput(
+function toReservationProposal(
   toolInput: Record<string, unknown>,
   sourceRef: string,
   source: 'gmail' | 'upload',
-  hintTripId: string | null | undefined,
-): { proposed: ReservationInput; confidence: number } {
+): { proposed: ReservationProposal; confidence: number } {
   const confidence = typeof toolInput.confidence === 'number' ? toolInput.confidence : 0;
-  // The tool input mirrors ReservationInput minus the caller-set fields; we
-  // add them here and let the consumer's Zod parse catch any drift.
+  // The tool input mirrors ReservationProposal — we just stamp the caller-set
+  // source fields and let the consumer's Zod parse catch any drift.
   const proposed = {
     ...toolInput,
-    trip_id: hintTripId ?? undefined,
     source,
     source_ref: sourceRef,
     confidence,
-  } as unknown as ReservationInput;
+  } as unknown as ReservationProposal;
   return { proposed, confidence };
 }
 
@@ -240,12 +239,7 @@ export async function extractReservationFromEmail(
   ]);
 
   const toolInput = pluckToolInput(resp);
-  const { proposed, confidence } = toReservationInput(
-    toolInput,
-    args.message_id,
-    'gmail',
-    args.hint_trip_id,
-  );
+  const { proposed, confidence } = toReservationProposal(toolInput, args.message_id, 'gmail');
   return {
     proposed_reservation: proposed,
     confidence,
@@ -287,12 +281,7 @@ export async function extractReservationFromAttachment(
   ]);
 
   const toolInput = pluckToolInput(resp);
-  const { proposed, confidence } = toReservationInput(
-    toolInput,
-    args.source_ref,
-    'upload',
-    args.hint_trip_id,
-  );
+  const { proposed, confidence } = toReservationProposal(toolInput, args.source_ref, 'upload');
   return {
     proposed_reservation: proposed,
     confidence,

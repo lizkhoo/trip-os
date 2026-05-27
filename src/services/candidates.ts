@@ -73,6 +73,11 @@ export async function getCandidate(id: string): Promise<ExtractionCandidate | un
 /**
  * Accept a pending candidate: create the reservation, mark the candidate
  * accepted, attach any pending attachments tied to the same source_ref.
+ *
+ * The candidate's row carries the auto-assigned trip_id (null if it needs the
+ * user to pick one); we inject it into the proposal here before handing off to
+ * createReservation. `edits` may override anything — including trip_id when
+ * the user is assigning a trip from the review queue.
  */
 export async function acceptCandidate(
   id: string,
@@ -83,10 +88,13 @@ export async function acceptCandidate(
   if (candidate.status !== 'pending') {
     throw new Error(`acceptCandidate: candidate is ${candidate.status}, not pending`);
   }
-  const merged: ReservationInput = {
+  const merged = {
     ...candidate.proposed_reservation,
+    trip_id: candidate.trip_id,
     ...(edits ?? {}),
   } as ReservationInput;
+  // createReservation Zod-parses this — a missing trip_id (user didn't assign
+  // a trip in the review queue) will surface as a parse failure there.
   const reservation = await createReservation(merged);
   await db
     .update(extractionCandidates)
@@ -132,7 +140,10 @@ export async function autoPromoteAboveThreshold(threshold: number): Promise<numb
   for (const row of rows) {
     const cand = toDomain(row);
     if (!cand.trip_id) continue;
-    const proposed = { ...cand.proposed_reservation, trip_id: cand.trip_id } as ReservationInput;
+    const proposed: ReservationInput = {
+      ...cand.proposed_reservation,
+      trip_id: cand.trip_id,
+    } as ReservationInput;
     const dup = await findDuplicateReservation(proposed);
     if (dup) {
       // Mark as merged, leave the existing reservation alone unless it was never manually edited.

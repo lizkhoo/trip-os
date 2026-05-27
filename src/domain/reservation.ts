@@ -131,3 +131,30 @@ export const ReservationInputSchema = z.discriminatedUnion('type', [
 ]);
 
 export type ReservationInput = z.infer<typeof ReservationInputSchema>;
+
+// Proposals are what Claude returns and what extraction_candidates store: an
+// unassigned reservation. The trip_id lives on the candidate row itself (auto-
+// assigned by the orchestrator, or chosen by the user at accept time), and
+// acceptCandidate merges it back in before calling createReservation.
+const ProposalFields = {
+  title: BaseFields.title,
+  start_at: BaseFields.start_at,
+  end_at: BaseFields.end_at,
+  start_location_id: BaseFields.start_location_id,
+  end_location_id: BaseFields.end_location_id,
+  confirmation_code: BaseFields.confirmation_code,
+  source: BaseFields.source,
+  source_ref: BaseFields.source_ref,
+  confidence: BaseFields.confidence,
+  status: BaseFields.status.optional(),
+};
+
+export const ReservationProposalSchema = z.discriminatedUnion('type', [
+  z.object({ ...ProposalFields, type: z.literal('flight'), details: FlightDetailsSchema }),
+  z.object({ ...ProposalFields, type: z.literal('lodging'), details: LodgingDetailsSchema }),
+  z.object({ ...ProposalFields, type: z.literal('dining'), details: DiningDetailsSchema }),
+  z.object({ ...ProposalFields, type: z.literal('activity'), details: ActivityDetailsSchema }),
+  z.object({ ...ProposalFields, type: z.literal('transit'), details: TransitDetailsSchema }),
+]);
+
+export type ReservationProposal = z.infer<typeof ReservationProposalSchema>;

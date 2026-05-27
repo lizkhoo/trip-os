@@ -17,7 +17,6 @@ import { dateInZone, nowIso } from '@/lib/time';
 const DEFAULT_LOOKBACK_DAYS = 365;
 const SETTINGS_ID = 'default';
 const SYNC_STATE_ID = 'default';
-const NIL_TRIP_UUID = '00000000-0000-0000-0000-000000000000';
 
 export interface SyncResult {
   candidatesCreated: number;
@@ -44,19 +43,25 @@ export async function runGmailSync(): Promise<SyncResult> {
       message_id: id,
     });
 
-    const tripId = await autoAssignTrip(extraction.proposed_reservation.start_at);
-    // The embedded proposed_reservation requires a uuid trip_id; for "needs trip"
-    // candidates we stash the nil UUID and let acceptCandidate's `edits` arg
-    // overwrite it when the user assigns a trip in the review queue.
-    const proposed = {
-      ...extraction.proposed_reservation,
-      trip_id: tripId ?? NIL_TRIP_UUID,
-    } as typeof extraction.proposed_reservation;
+    // PRD §"Cross-cutting": refuse to commit a candidate without an explicit
+    // IANA zone. Better to drop a row than poison the trip with bad timestamps.
+    const iana = extraction.proposed_reservation.details?.iana_timezone;
+    if (typeof iana !== 'string' || iana.length === 0) {
+      console.warn(`[gmail] skipping ${id}: extraction is missing details.iana_timezone`);
+      continue;
+    }
 
-    // Surface duplicate hits at sync time so the review UI can show "merge"
-    // — the auto-promote pass below will dedup again at promotion time.
+    const tripId = await autoAssignTrip(extraction.proposed_reservation.start_at);
+
+    // Dedup at sync time so the review UI can show "merge". The proposal has
+    // no trip_id by design; we synthesize one only to feed the dedup query.
+    let mergedIntoReservationId: string | null = null;
     if (tripId) {
-      await findDuplicateReservation(proposed);
+      const dup = await findDuplicateReservation({
+        ...extraction.proposed_reservation,
+        trip_id: tripId,
+      });
+      if (dup) mergedIntoReservationId = dup.id;
     }
 
     await createCandidate({
@@ -65,9 +70,10 @@ export async function runGmailSync(): Promise<SyncResult> {
       source_ref: id,
       raw_text: text,
       claude_response: extraction.raw_claude_response,
-      proposed_reservation: proposed,
+      proposed_reservation: extraction.proposed_reservation,
       confidence: extraction.confidence,
       status: 'pending',
+      merged_into_reservation_id: mergedIntoReservationId,
     });
     candidatesCreated += 1;
   }
