@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { View, Text } from 'react-native';
 import { Button, DateTimePicker, Input, Select, type SelectOption } from '@/components/ui';
 import { composeIso } from '@/lib/time';
@@ -8,6 +8,8 @@ import {
   type ReservationInput,
   type ReservationType,
 } from '@/domain/reservation';
+import { findOrCreateLocation, getLocation } from '@/services/locations';
+import { getTrip } from '@/services/trips';
 
 interface ReservationFormProps {
   tripId: string;
@@ -43,10 +45,31 @@ export function ReservationForm({
   const [end, setEnd] = useState<Date>(initial?.end_at ? new Date(initial.end_at) : new Date());
   const [confirmationCode, setConfirmationCode] = useState<string>(initial?.confirmation_code ?? '');
   const [detailField, setDetailField] = useState<string>(initialDetailField(initial));
+  const [startLocationName, setStartLocationName] = useState<string>('');
+  const [endLocationName, setEndLocationName] = useState<string>('');
+  const [tripTimezone, setTripTimezone] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const detailLabel = useMemo(() => detailLabelFor(type), [type]);
+  const showEndLocation = type === 'flight' || type === 'transit';
+
+  // Resolve the trip's home timezone (location rows need a timezone) and the names of
+  // any pre-existing locations the reservation already points at.
+  useEffect(() => {
+    void (async () => {
+      const trip = await getTrip(tripId);
+      if (trip) setTripTimezone(trip.home_timezone);
+      if (initial?.start_location_id) {
+        const loc = await getLocation(initial.start_location_id);
+        if (loc) setStartLocationName(loc.name);
+      }
+      if (initial?.end_location_id) {
+        const loc = await getLocation(initial.end_location_id);
+        if (loc) setEndLocationName(loc.name);
+      }
+    })();
+  }, [tripId, initial?.start_location_id, initial?.end_location_id]);
 
   const submit = async (): Promise<void> => {
     setError(null);
@@ -55,14 +78,27 @@ export function ReservationForm({
       return;
     }
     try {
+      setBusy(true);
+      const resolvedStartId = await resolveLocationId(
+        startLocationName.trim(),
+        initial?.start_location_id ?? null,
+        tripTimezone,
+      );
+      const resolvedEndId = showEndLocation
+        ? await resolveLocationId(
+            endLocationName.trim(),
+            initial?.end_location_id ?? null,
+            tripTimezone,
+          )
+        : initial?.end_location_id ?? null;
       const input = ReservationInputSchema.parse({
         trip_id: tripId,
         type,
         title: title.trim(),
         start_at: composeIso(ymd(start), hm(start), tz),
         end_at: hasEnd ? composeIso(ymd(end), hm(end), tz) : null,
-        start_location_id: initial?.start_location_id ?? null,
-        end_location_id: initial?.end_location_id ?? null,
+        start_location_id: resolvedStartId,
+        end_location_id: resolvedEndId,
         confirmation_code: confirmationCode.trim() || null,
         source: initial?.source ?? 'manual',
         source_ref: initial?.source_ref ?? null,
@@ -70,7 +106,6 @@ export function ReservationForm({
         status: initial?.status ?? 'confirmed',
         details: buildDetails(type, detailField.trim(), tz),
       });
-      setBusy(true);
       await onSubmit(input);
     } catch (e) {
       setError((e as Error).message);
@@ -107,6 +142,20 @@ export function ReservationForm({
           value={detailField}
           onChangeText={setDetailField}
           autoCapitalize="none"
+        />
+      ) : null}
+      <Input
+        label="Location"
+        value={startLocationName}
+        onChangeText={setStartLocationName}
+        placeholder="e.g. Tokyo Station"
+      />
+      {showEndLocation ? (
+        <Input
+          label="Destination"
+          value={endLocationName}
+          onChangeText={setEndLocationName}
+          placeholder="e.g. Kyoto Station"
         />
       ) : null}
       <Input
@@ -202,4 +251,28 @@ function hm(d: Date): string {
   const h = String(d.getHours()).padStart(2, '0');
   const m = String(d.getMinutes()).padStart(2, '0');
   return `${h}:${m}`;
+}
+
+/**
+ * Reuse an existing location with a matching geocode_query (the place name acts as the
+ * key for now) or create a new one. Geocoding to lat/lng is deferred; the map screen
+ * already skips pins without coordinates.
+ */
+async function resolveLocationId(
+  name: string,
+  fallbackId: string | null | undefined,
+  tripTimezone: string | null,
+): Promise<string | null> {
+  if (!name) return fallbackId ?? null;
+  if (!tripTimezone) return fallbackId ?? null;
+  const loc = await findOrCreateLocation({
+    name,
+    address: null,
+    lat: null,
+    lng: null,
+    geocode_query: name,
+    place_id: null,
+    timezone: tripTimezone,
+  });
+  return loc.id;
 }

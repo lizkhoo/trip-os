@@ -142,7 +142,7 @@ function SourcePreview({
       {attachment && attachment.kind === 'image' ? (
         <Image
           source={{ uri: attachment.storageUri }}
-          style={{ width: '100%', height: 180, borderRadius: 12 }}
+          className="w-full h-[180px] rounded-xl"
           resizeMode="cover"
         />
       ) : null}

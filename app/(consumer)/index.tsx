@@ -74,7 +74,7 @@ function TripRow({ trip }: { trip: Trip }) {
           {trip.cover_image_uri ? (
             <Image
               source={{ uri: trip.cover_image_uri }}
-              style={{ width: '100%', height: 140 }}
+              className="w-full h-[140px]"
               resizeMode="cover"
             />
           ) : null}

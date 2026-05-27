@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { View, Text } from 'react-native';
+import { View, Text, Linking } from 'react-native';
 import MapView, { Marker, type Region } from 'react-native-maps';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import {
 import { getTrip } from '@/services/trips';
 import { listReservationsForTrip } from '@/services/reservations';
 import { listLocationsByIds } from '@/services/locations';
+import { appleMapsDirectionsUrl, googleMapsDirectionsUrl } from '@/lib/itinerary';
 import type { Location } from '@/domain/location';
 import type { Reservation, ReservationType } from '@/domain/reservation';
 
@@ -128,6 +129,23 @@ export default function TripMap() {
 }
 
 function PinDetail({ pin }: { pin: Pin }) {
+  const openInMaps = useCallback(async () => {
+    // Omit origin so the user's current location is used as start; Apple Maps URL scheme
+    // accepts daddr alone. canOpenURL falls back to the Google Maps web URL on the rare
+    // iOS where the maps:// scheme isn't handled.
+    const apple = appleMapsDirectionsUrl('', pin.loc.geocode_query);
+    try {
+      const supported = await Linking.canOpenURL(apple);
+      if (supported) {
+        await Linking.openURL(apple);
+        return;
+      }
+    } catch {
+      /* fall through to web fallback */
+    }
+    await Linking.openURL(googleMapsDirectionsUrl('', pin.loc.geocode_query));
+  }, [pin.loc.geocode_query]);
+
   return (
     <View className="pt-2">
       <Text className="font-serif text-2xl text-ink">{pin.loc.name}</Text>
@@ -141,6 +159,9 @@ function PinDetail({ pin }: { pin: Pin }) {
             <Text className="text-sm text-ink flex-1">{r.title}</Text>
           </View>
         ))}
+      </View>
+      <View className="mt-4">
+        <Button title="Open in Maps" onPress={openInMaps} />
       </View>
     </View>
   );
