@@ -1,17 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, ScrollView, Image, Alert } from 'react-native';
-import { eq } from 'drizzle-orm';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, Card, ConfidenceChip, Input, ReservationBadge } from '@/components/ui';
 import { acceptCandidate, getCandidate, rejectCandidate } from '@/services/candidates';
 import { getReservation } from '@/services/reservations';
-import { db } from '@/db/client';
-import { attachments } from '@/db/schema';
+import { getAttachmentByExtractionRunId } from '@/services/attachments';
+import type { Attachment } from '@/db/schema';
 import type { ExtractionCandidate } from '@/domain/candidate';
+import { ReservationInputSchema } from '@/domain/reservation';
 import type { Reservation, ReservationInput } from '@/domain/reservation';
 
-type AttachmentRow = typeof attachments.$inferSelect;
+type AttachmentRow = Attachment;
 
 export default function ReviewDetail() {
   const params = useLocalSearchParams<{ id: string }>();
@@ -33,11 +33,7 @@ export default function ReviewDetail() {
         if (r) setExisting(r);
       }
       if (c.source_ref) {
-        const att = await db
-          .select()
-          .from(attachments)
-          .where(eq(attachments.extractionRunId, c.source_ref))
-          .get();
+        const att = await getAttachmentByExtractionRunId(c.source_ref);
         if (att) setAttachment(att);
       }
     })();

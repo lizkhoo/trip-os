@@ -43,6 +43,26 @@ export async function getTrip(id: string): Promise<Trip | undefined> {
   };
 }
 
+export async function updateTrip(id: string, patch: Partial<TripInput>): Promise<Trip> {
+  const next: Partial<typeof trips.$inferInsert> = {};
+  if (patch.title !== undefined) next.title = patch.title;
+  if (patch.start_date !== undefined) next.startDate = patch.start_date;
+  if (patch.end_date !== undefined) next.endDate = patch.end_date;
+  if (patch.home_timezone !== undefined) next.homeTimezone = patch.home_timezone;
+  if (patch.cover_image_uri !== undefined) next.coverImageUri = patch.cover_image_uri ?? null;
+  await db.update(trips).set(next).where(eq(trips.id, id));
+  const row = await db.select().from(trips).where(eq(trips.id, id)).get();
+  if (!row) throw new Error(`updateTrip: row not found (id=${id})`);
+  return {
+    id: row.id,
+    title: row.title,
+    start_date: row.startDate,
+    end_date: row.endDate,
+    home_timezone: row.homeTimezone,
+    cover_image_uri: row.coverImageUri,
+  };
+}
+
 export async function deleteTrip(id: string): Promise<void> {
   await db.delete(trips).where(eq(trips.id, id));
 }

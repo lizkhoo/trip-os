@@ -3,10 +3,7 @@ import { View, Text } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button, DateTimePicker, Input, Select } from '@/components/ui';
-import { getTrip } from '@/services/trips';
-import { db } from '@/db/client';
-import { trips } from '@/db/schema';
-import { eq } from 'drizzle-orm';
+import { getTrip, updateTrip } from '@/services/trips';
 import { TIMEZONE_OPTIONS } from '@/lib/timezones';
 
 export default function EditTripScreen() {
@@ -46,15 +43,12 @@ export default function EditTripScreen() {
     }
     setBusy(true);
     try {
-      await db
-        .update(trips)
-        .set({
-          title: title.trim(),
-          startDate: ymd(start),
-          endDate: ymd(end),
-          homeTimezone: tz,
-        })
-        .where(eq(trips.id, params.id));
+      await updateTrip(params.id, {
+        title: title.trim(),
+        start_date: ymd(start),
+        end_date: ymd(end),
+        home_timezone: tz,
+      });
       router.back();
     } catch (e) {
       setError((e as Error).message);

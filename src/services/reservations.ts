@@ -36,6 +36,9 @@ function toDomain(row: Row): Reservation {
 export async function createReservation(input: ReservationInput): Promise<Reservation> {
   const parsed = ReservationInputSchema.parse(input);
   const id = newUuid();
+  // Manual sources anchor manually_edited_at at creation so a later ingestion run with
+  // the same dedup key can't overwrite this row.
+  const manuallyEditedAt = parsed.source === 'manual' ? nowIso() : null;
   await db.insert(reservations).values({
     id,
     tripId: parsed.trip_id,
@@ -51,6 +54,7 @@ export async function createReservation(input: ReservationInput): Promise<Reserv
     confidence: parsed.confidence ?? null,
     status: parsed.status ?? 'confirmed',
     details: JSON.stringify(parsed.details),
+    manuallyEditedAt,
   });
   const row = await db.select().from(reservations).where(eq(reservations.id, id)).get();
   if (!row) throw new Error(`createReservation: row not found after insert (id=${id})`);
