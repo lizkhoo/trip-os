@@ -205,6 +205,7 @@ async function main() {
     recognizeText: async () => ({
       text: 'AS 338 RDM SEA 2026-03-14 09:02 PDT',
       blocks: [],
+      pageImageUris: ['file:///tmp/fake-flight.jpg'],
     }),
     extractReservationFromAttachment: async ({ source_ref }) => ({
       proposed_reservation: {
@@ -255,7 +256,9 @@ async function main() {
 interface UploadReplicaDeps {
   fakeSourceUri: string;
   fakeKind: 'image' | 'pdf';
-  recognizeText: (uri: string) => Promise<{ text: string; blocks: Array<unknown> }>;
+  recognizeText: (
+    uri: string,
+  ) => Promise<{ text: string; blocks: Array<unknown>; pageImageUris: string[] }>;
   extractReservationFromAttachment: (args: {
     ocr_text: string;
     image_uris: string[];
@@ -282,7 +285,7 @@ async function runSyncUploadNodeReplica(db: Database.Database, deps: UploadRepli
 
   const extraction = await deps.extractReservationFromAttachment({
     ocr_text: ocr.text,
-    image_uris: [fakeStorageUri],
+    image_uris: ocr.pageImageUris.length > 0 ? ocr.pageImageUris : [fakeStorageUri],
     source_ref: extractionRunId,
   });
 

@@ -18,6 +18,10 @@ private struct OcrBlock {
 private struct OcrPage {
   let text: String
   let blocks: [OcrBlock]
+  // file:// URL of the pixels Vision ran on. For raw images it's the source path;
+  // for PDFs it points to a per-page PNG we wrote so callers can feed Claude vision
+  // the same bitmap OCR saw.
+  let imageUrl: URL
 }
 
 private enum AppleVisionError: Error, LocalizedError {
@@ -26,6 +30,7 @@ private enum AppleVisionError: Error, LocalizedError {
   case imageDecodeFailed
   case pdfDecodeFailed
   case pdfHasNoPages
+  case pdfPageWriteFailed(Int)
   case ocrFailed(String)
 
   var errorDescription: String? {
@@ -35,6 +40,7 @@ private enum AppleVisionError: Error, LocalizedError {
     case .imageDecodeFailed: return "AppleVision: failed to decode image"
     case .pdfDecodeFailed: return "AppleVision: failed to open PDF"
     case .pdfHasNoPages: return "AppleVision: PDF has no pages"
+    case .pdfPageWriteFailed(let i): return "AppleVision: failed to write rasterised PDF page \(i)"
     case .ocrFailed(let m): return "AppleVision: OCR failed (\(m))"
     }
   }
@@ -60,7 +66,12 @@ public class AppleVisionModule: Module {
               ]
             }
           }
-          promise.resolve(["text": combinedText, "blocks": blocksOut])
+          let pageImageUris: [String] = pages.map { $0.imageUrl.absoluteString }
+          promise.resolve([
+            "text": combinedText,
+            "blocks": blocksOut,
+            "pageImageUris": pageImageUris,
+          ])
         } catch {
           promise.reject("ERR_APPLE_VISION", error.localizedDescription)
         }
@@ -94,13 +105,20 @@ private func runOcr(on url: URL) throws -> [OcrPage] {
   guard let image = UIImage(contentsOfFile: url.path), let cg = image.cgImage else {
     throw AppleVisionError.imageDecodeFailed
   }
-  let page = try ocrCgImage(cg)
+  let page = try ocrCgImage(cg, imageUrl: url)
   return [page]
 }
 
 private func ocrPdf(at url: URL) throws -> [OcrPage] {
   guard let doc = PDFDocument(url: url) else { throw AppleVisionError.pdfDecodeFailed }
   if doc.pageCount == 0 { throw AppleVisionError.pdfHasNoPages }
+  // Group rasterised pages under a per-run subdirectory so a later cleanup pass can
+  // wipe them by deleting one folder; using NSTemporaryDirectory means iOS reaps them on
+  // memory pressure even if we never get around to it.
+  let runDir = URL(fileURLWithPath: NSTemporaryDirectory())
+    .appendingPathComponent("apple-vision")
+    .appendingPathComponent(UUID().uuidString)
+  try FileManager.default.createDirectory(at: runDir, withIntermediateDirectories: true)
   var pages: [OcrPage] = []
   pages.reserveCapacity(doc.pageCount)
   for i in 0..<doc.pageCount {
@@ -120,27 +138,30 @@ private func ocrPdf(at url: URL) throws -> [OcrPage] {
       cgCtx.restoreGState()
     }
     guard let cg = img.cgImage else { continue }
-    let p = try ocrCgImage(cg)
+    let pageUrl = runDir.appendingPathComponent("page-\(i + 1).png")
+    guard let pngData = img.pngData() else { throw AppleVisionError.pdfPageWriteFailed(i + 1) }
+    do {
+      try pngData.write(to: pageUrl, options: .atomic)
+    } catch {
+      throw AppleVisionError.pdfPageWriteFailed(i + 1)
+    }
+    let p = try ocrCgImage(cg, imageUrl: pageUrl)
     pages.append(p)
   }
   if pages.isEmpty { throw AppleVisionError.pdfHasNoPages }
   return pages
 }
 
-private func ocrCgImage(_ cg: CGImage) throws -> OcrPage {
-  var resultPage: OcrPage = OcrPage(text: "", blocks: [])
+private func ocrCgImage(_ cg: CGImage, imageUrl: URL) throws -> OcrPage {
+  var lines: [String] = []
+  var blocks: [OcrBlock] = []
   var ocrError: Error?
   let request = VNRecognizeTextRequest { req, err in
     if let err = err {
       ocrError = err
       return
     }
-    guard let observations = req.results as? [VNRecognizedTextObservation] else {
-      resultPage = OcrPage(text: "", blocks: [])
-      return
-    }
-    var lines: [String] = []
-    var blocks: [OcrBlock] = []
+    guard let observations = req.results as? [VNRecognizedTextObservation] else { return }
     lines.reserveCapacity(observations.count)
     blocks.reserveCapacity(observations.count)
     for obs in observations {
@@ -158,7 +179,6 @@ private func ocrCgImage(_ cg: CGImage) throws -> OcrPage {
         h: Double(bb.size.height)
       ))
     }
-    resultPage = OcrPage(text: lines.joined(separator: "\n"), blocks: blocks)
   }
   request.recognitionLevel = .accurate
   request.usesLanguageCorrection = true
@@ -172,5 +192,5 @@ private func ocrCgImage(_ cg: CGImage) throws -> OcrPage {
   if let e = ocrError {
     throw AppleVisionError.ocrFailed(e.localizedDescription)
   }
-  return resultPage
+  return OcrPage(text: lines.joined(separator: "\n"), blocks: blocks, imageUrl: imageUrl)
 }

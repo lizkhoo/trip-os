@@ -48,10 +48,12 @@ export async function importFile(
   }
 
   let ocrText = '';
+  let pageImageUris: string[] = [];
   try {
     onProgress('ocr');
     const result = await recognizeText(storageUri);
     ocrText = result.text;
+    pageImageUris = result.pageImageUris;
     await db.update(attachments).set({ ocrText }).where(eq(attachments.id, attachmentId));
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
@@ -63,10 +65,10 @@ export async function importFile(
     onProgress('extracting');
     const extraction = await extractReservationFromAttachment({
       ocr_text: ocrText,
-      // For PDFs we currently send the stored URI; Claude's vision call will rasterise itself
-      // if needed, but the OCR text is the primary signal. PDFs aren't routed through prebuilt
-      // page images yet — leave that hook for when extract.ts lands its vision path.
-      image_uris: kind === 'image' ? [storageUri] : [storageUri],
+      // Apple Vision returns one rasterised PNG per page for PDFs and the source URI for raw
+      // images — either way, the pixels OCR ran on. Claude vision can't ingest .pdf bytes
+      // directly, so without this PDF uploads silently lost their image signal.
+      image_uris: pageImageUris.length > 0 ? pageImageUris : [storageUri],
       source_ref: extractionRunId,
     });
 
