@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
+import Constants from 'expo-constants';
 import { authorize, refresh, type AuthorizeResult } from 'react-native-app-auth';
 import { Button, Card, EmptyState } from '@/components/ui';
 import {
@@ -10,24 +11,19 @@ import {
 } from '@/services/secrets';
 import { runGmailSync } from '@/services/syncGmail';
 
-// expo-constants ships transitively with expo; require keeps it out of the
-// type-graph since the package isn't a direct dependency.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const Constants = require('expo-constants').default as {
-  expoConfig?: { extra?: { googleClientId?: string } };
-};
-
 const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
+
+// Uses the app's own URL scheme (declared in app.config.ts) — Google's iOS OAuth
+// client accepts any custom-scheme redirect the developer registers in the Cloud
+// Console, so we don't need the reversed-clientid scheme that older guides use.
+const REDIRECT_URL = 'trip-os://oauthredirect';
 
 function authConfig() {
   const clientId = Constants.expoConfig?.extra?.googleClientId ?? '';
   return {
     issuer: 'https://accounts.google.com',
     clientId,
-    // PKCE-only flow: redirectUrl uses the reversed client id with no scheme suffix.
-    // The user pastes the matching reversed client id into Info.plist via the
-    // app.config plugin once they create their OAuth credential — see README.
-    redirectUrl: `${clientId.split('.').reverse().join('.')}:/oauthredirect`,
+    redirectUrl: REDIRECT_URL,
     scopes: [GMAIL_SCOPE],
     usePKCE: true,
   };
