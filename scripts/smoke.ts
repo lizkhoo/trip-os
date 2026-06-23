@@ -5,13 +5,13 @@
  *  - Drizzle migrations apply cleanly to a fresh SQLite database.
  *  - The seed transform produces ≥ 1 reservation per type with valid Zod-parsed shapes.
  *  - Dedup keys match for two identical proposed reservations.
+ *  - The REAL `runGmailSync` orchestrator runs in Node via the DB port: two mock
+ *    messages → two candidates, one auto-promoted above threshold.
  *
  * What it does NOT prove: the actual app boots, expo-sqlite works, or any UI renders.
  * Those need a Mac. See README's "Verification on macOS" section.
  */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
-import Database from 'better-sqlite3';
+import type Database from 'better-sqlite3';
 import { v4 as uuidv4 } from 'uuid';
 import { runSeedWithDeps } from './seed';
 import {
@@ -20,23 +20,13 @@ import {
   type ReservationProposal,
 } from '@/domain/reservation';
 import { computeDedupKey, keysMatch } from '@/services/dedup';
-
-const ROOT = path.resolve(__dirname, '..');
-const MIGRATIONS_DIR = path.join(ROOT, 'src/db/migrations');
-
-function applyMigrations(db: Database.Database): void {
-  const files = fs
-    .readdirSync(MIGRATIONS_DIR)
-    .filter((f) => f.endsWith('.sql'))
-    .sort();
-  for (const file of files) {
-    const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
-    const statements = sql.split('--> statement-breakpoint').map((s) => s.trim()).filter(Boolean);
-    for (const stmt of statements) {
-      db.exec(stmt);
-    }
-  }
-}
+import { runGmailSync } from '@/services/syncGmail';
+import {
+  createHarness,
+  installMockExtract,
+  installMockGmail,
+} from '../tests/e2e/harness';
+import type { ExtractionResult } from '@/services/extract';
 
 function buildDeps(db: Database.Database) {
   const insertTrip = db.prepare(
@@ -112,9 +102,12 @@ function assertPositive(condition: boolean, msg: string): void {
 }
 
 async function main() {
-  const db = new Database(':memory:');
-  db.pragma('foreign_keys = ON');
-  applyMigrations(db);
+  // The harness builds the same fresh in-memory better-sqlite3 + migrations as
+  // before, and injects the drizzle client into the DB port so the REAL services
+  // (runGmailSync below) run against this exact database. `harness.raw` is the
+  // underlying handle, used for the direct-SQL seed + shape assertions.
+  const harness = createHarness();
+  const db = harness.raw;
   console.log('✓ migrations applied');
 
   const settings = db.prepare(`SELECT id FROM settings`).all();
@@ -194,6 +187,7 @@ async function main() {
 
   // Gmail-sync smoke: two mock messages, one high-confidence and one low, both
   // landing inside the seeded Japan trip's range so trip auto-assignment fires.
+  // Drives the REAL runGmailSync through the DB port (no replica).
   // Asserts: 2 candidates created; 1 auto-promoted when confidence ≥ threshold.
   const tripCount = (db.prepare(`SELECT COUNT(*) AS n FROM trips`).get() as { n: number }).n;
   if (tripCount === 0) {
@@ -202,234 +196,90 @@ async function main() {
   }
   db.prepare(`UPDATE settings SET auto_promote_threshold = 0.9 WHERE id = 'default'`).run();
 
-  const mockMessages = new Map<string, { subject: string; body: string }>([
-    [
-      'msg-flight-hi',
-      {
-        subject: 'Your Alaska Air flight confirmation',
-        body: 'AS 338 RDM to SEA on 2026-03-14 at 09:02 PDT',
-      },
-    ],
-    [
-      'msg-dining-lo',
-      {
-        subject: 'OpenTable reservation',
-        body: 'Sushi Saito, Tokyo, party of 2',
-      },
-    ],
+  // A flight that is NOT already in the seed (the seed contains AS 338), landing
+  // inside the trip range so it auto-assigns and — being unique — auto-promotes.
+  const flightProposal: ReservationProposal = {
+    type: 'flight',
+    title: 'NH 110 HND → ITM',
+    start_at: '2026-03-20T09:00:00+09:00',
+    source: 'gmail',
+    source_ref: 'msg-flight-hi',
+    confidence: 0.95,
+    status: 'confirmed',
+    details: {
+      carrier: 'NH',
+      flight_number: '110',
+      depart_iata: 'HND',
+      arrive_iata: 'ITM',
+      iana_timezone: 'Asia/Tokyo',
+    },
+  } as ReservationProposal;
+
+  const diningProposal: ReservationProposal = {
+    type: 'dining',
+    title: 'Sushi Saito',
+    start_at: '2026-03-21T19:00:00+09:00',
+    source: 'gmail',
+    source_ref: 'msg-dining-lo',
+    confidence: 0.6,
+    status: 'confirmed',
+    details: {
+      party_size: 2,
+      iana_timezone: 'Asia/Tokyo',
+    },
+  } as ReservationProposal;
+
+  installMockGmail([
+    {
+      id: 'msg-flight-hi',
+      subject: 'Your Alaska Air flight confirmation',
+      bodyText: 'AS 338 RDM to SEA on 2026-03-14 at 09:02 PDT',
+    },
+    {
+      id: 'msg-dining-lo',
+      subject: 'OpenTable reservation',
+      bodyText: 'Sushi Saito, Tokyo, party of 2',
+    },
   ]);
 
-  // Proposals carry no trip_id — that lives on the candidate row (auto-assigned)
-  // or is supplied by the user at accept time.
-  const mockExtractions = new Map<string, { confidence: number; reservation: ReservationProposal }>([
-    [
-      'msg-flight-hi',
-      {
-        confidence: 0.95,
-        reservation: {
-          type: 'flight',
-          title: 'AS 338 RDM → SEA',
-          start_at: '2026-03-14T09:02:00-07:00',
-          source: 'gmail',
-          source_ref: 'msg-flight-hi',
+  installMockExtract(
+    new Map<string, ExtractionResult>([
+      [
+        'msg-flight-hi',
+        {
+          ok: true,
+          proposed_reservation: flightProposal,
           confidence: 0.95,
-          status: 'confirmed',
-          details: {
-            carrier: 'AS',
-            flight_number: '338',
-            depart_iata: 'RDM',
-            arrive_iata: 'SEA',
-            iana_timezone: 'America/Los_Angeles',
-          },
-        } as ReservationProposal,
-      },
-    ],
-    [
-      'msg-dining-lo',
-      {
-        confidence: 0.6,
-        reservation: {
-          type: 'dining',
-          title: 'Sushi Saito',
-          start_at: '2026-03-21T19:00:00+09:00',
-          source: 'gmail',
-          source_ref: 'msg-dining-lo',
+          raw_claude_response: '{"mocked":true}',
+        },
+      ],
+      [
+        'msg-dining-lo',
+        {
+          ok: true,
+          proposed_reservation: diningProposal,
           confidence: 0.6,
-          status: 'confirmed',
-          details: {
-            party_size: 2,
-            iana_timezone: 'Asia/Tokyo',
-          },
-        } as ReservationProposal,
-      },
-    ],
-  ]);
+          raw_claude_response: '{"mocked":true}',
+        },
+      ],
+    ]),
+  );
 
-  // Run a node-side replica of runGmailSync that drives the same logic against
-  // better-sqlite3. The production module imports expo-sqlite, so we test the
-  // orchestration contract here rather than the exact module.
-  await runGmailSyncNodeReplica(db, {
-    searchMessageIds: async () => [...mockMessages.keys()],
-    fetchMessage: async (id) => {
-      const m = mockMessages.get(id);
-      if (!m) throw new Error(`unknown mock message ${id}`);
-      return {
-        id,
-        subject: m.subject,
-        from: 'noreply@example.com',
-        bodyText: m.body,
-        date: '2026-03-01',
-        snippet: m.subject,
-      };
-    },
-    extractReservationFromEmail: async ({ message_id }) => {
-      const m = mockExtractions.get(message_id);
-      if (!m) throw new Error(`unknown mock extraction ${message_id}`);
-      return {
-        ok: true,
-        proposed_reservation: m.reservation,
-        confidence: m.confidence,
-        raw_claude_response: '{"mocked":true}',
-      };
-    },
-  });
+  const result = await runGmailSync();
+  assertPositive(result.candidatesCreated === 2, 'sync created 2 candidates');
+  assertPositive(result.promoted === 1, 'one candidate auto-promoted (confidence ≥ 0.9)');
 
   const candRows = db
     .prepare(`SELECT status, confidence FROM extraction_candidates`)
     .all() as Array<{ status: string; confidence: number }>;
-  assertPositive(candRows.length === 2, 'sync created 2 candidates');
+  assertPositive(candRows.length === 2, 'two candidate rows persisted');
   const promoted = candRows.filter((r) => r.status === 'accepted').length;
   const pending = candRows.filter((r) => r.status === 'pending').length;
-  assertPositive(promoted === 1, 'one candidate auto-promoted (confidence ≥ 0.9)');
-  assertPositive(pending === 1, 'one candidate left pending (confidence below threshold)');
+  assertPositive(promoted === 1, 'one candidate row marked accepted');
+  assertPositive(pending === 1, 'one candidate row left pending (below threshold)');
 
+  harness.teardown();
   console.log('\n✓ smoke test passed');
-}
-
-// Node-side replica of runGmailSync. Mirrors the orchestrator's logic but uses
-// better-sqlite3 prepared statements directly so it works without expo-sqlite.
-// TODO: collapse into a thin in-memory-DB version of runGmailSync once we
-// abstract the drizzle client behind a small port — currently the production
-// module pins expo-sqlite at import time, which we can't bring into Node.
-// If you change runGmailSync's logic, keep this in sync.
-interface NodeReplicaDeps {
-  searchMessageIds: (q: string, after?: string) => Promise<string[]>;
-  fetchMessage: (id: string) => Promise<{
-    id: string;
-    subject: string;
-    from: string;
-    bodyText: string;
-    date: string;
-    snippet: string;
-  }>;
-  extractReservationFromEmail: (args: { raw_text: string; message_id: string }) => Promise<
-    | {
-        ok: true;
-        proposed_reservation: ReservationProposal;
-        confidence: number;
-        raw_claude_response: string;
-      }
-    | { ok: false; error: string; confidence: 0; raw_claude_response: string }
-  >;
-}
-
-async function runGmailSyncNodeReplica(db: Database.Database, deps: NodeReplicaDeps): Promise<void> {
-  const settingsRow = db
-    .prepare(`SELECT auto_promote_threshold, sender_allowlist, gmail_label_name FROM settings WHERE id = 'default'`)
-    .get() as
-    | {
-        auto_promote_threshold: number;
-        sender_allowlist: string;
-        gmail_label_name: string;
-      }
-    | undefined;
-  const threshold = settingsRow?.auto_promote_threshold ?? 0.9;
-  const trips = db.prepare(`SELECT id, start_date, end_date, home_timezone FROM trips`).all() as Array<{
-    id: string;
-    start_date: string;
-    end_date: string;
-    home_timezone: string;
-  }>;
-
-  const ids = await deps.searchMessageIds('mock');
-  const seen = new Set(
-    (db
-      .prepare(`SELECT source_ref FROM extraction_candidates WHERE source = 'gmail'`)
-      .all() as Array<{ source_ref: string | null }>)
-      .map((r) => r.source_ref)
-      .filter((r): r is string => !!r),
-  );
-
-  const insertCand = db.prepare(
-    `INSERT INTO extraction_candidates (id, trip_id, source, source_ref, raw_text, claude_response, proposed_reservation, confidence, status)
-     VALUES (?, ?, 'gmail', ?, ?, ?, ?, ?, 'pending')`,
-  );
-  const insertRes = db.prepare(
-    `INSERT INTO reservations (id, trip_id, type, title, start_at, end_at, source, source_ref, confidence, status, details)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  );
-  const updateCandAccepted = db.prepare(
-    `UPDATE extraction_candidates SET status = 'accepted', merged_into_reservation_id = ? WHERE id = ?`,
-  );
-
-  for (const id of ids) {
-    if (seen.has(id)) continue;
-    const msg = await deps.fetchMessage(id);
-    const text = `Subject: ${msg.subject}\nFrom: ${msg.from}\n\n${msg.bodyText}`;
-    const ext = await deps.extractReservationFromEmail({ raw_text: text, message_id: id });
-    if (!ext.ok) continue;
-
-    const start = ext.proposed_reservation.start_at;
-    const matching = trips.filter((t) => {
-      // Cheap in-zone date extract for the smoke test (we only seed Asia/Tokyo + a US trip).
-      const day = new Date(start).toISOString().slice(0, 10);
-      return day >= t.start_date && day <= t.end_date;
-    });
-    const tripId = matching.length === 1 ? (matching[0]?.id ?? null) : null;
-
-    insertCand.run(
-      uuidv4(),
-      tripId,
-      id,
-      text,
-      ext.raw_claude_response,
-      // Stored proposal carries NO trip_id — the candidate row owns that.
-      JSON.stringify(ext.proposed_reservation),
-      ext.confidence,
-    );
-  }
-
-  // Auto-promote pass: every pending candidate with confidence ≥ threshold and
-  // an assigned trip becomes a real reservation.
-  const pending = db
-    .prepare(
-      `SELECT id, trip_id, proposed_reservation, confidence FROM extraction_candidates WHERE status = 'pending' AND confidence >= ?`,
-    )
-    .all(threshold) as Array<{
-    id: string;
-    trip_id: string | null;
-    proposed_reservation: string;
-    confidence: number;
-  }>;
-  for (const cand of pending) {
-    if (!cand.trip_id) continue;
-    const proposed = JSON.parse(cand.proposed_reservation) as ReservationProposal;
-    const resId = uuidv4();
-    insertRes.run(
-      resId,
-      cand.trip_id,
-      proposed.type,
-      proposed.title,
-      proposed.start_at,
-      proposed.end_at ?? null,
-      proposed.source,
-      proposed.source_ref ?? null,
-      proposed.confidence ?? null,
-      proposed.status ?? 'confirmed',
-      JSON.stringify(proposed.details),
-    );
-    updateCandAccepted.run(resId, cand.id);
-  }
 }
 
 main().catch((e) => {

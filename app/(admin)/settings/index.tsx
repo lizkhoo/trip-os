@@ -3,7 +3,7 @@ import { ScrollView, Text, View, Alert } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { eq } from 'drizzle-orm';
 import { Button, Card, Input } from '@/components/ui';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { settings } from '@/db/schema';
 import { setAnthropicKey, getAnthropicKey, clearAnthropicKey } from '@/services/secrets';
 
@@ -32,7 +32,7 @@ export default function SettingsScreen() {
 
   const load = useCallback(async () => {
     setHasKey(!!(await getAnthropicKey()));
-    const row = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID)).get();
+    const row = await getDb().select().from(settings).where(eq(settings.id, SETTINGS_ID)).get();
     if (row) {
       let allowlist: string[] = [];
       try {
@@ -74,7 +74,7 @@ export default function SettingsScreen() {
       const threshold = clamp(next.autoPromoteThreshold, THRESHOLD_MIN, THRESHOLD_MAX);
       setBusy(true);
       try {
-        await db
+        await getDb()
           .update(settings)
           .set({
             autoPromoteThreshold: threshold,

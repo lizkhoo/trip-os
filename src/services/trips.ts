@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { trips } from '@/db/schema';
 import { TripInputSchema, type Trip, type TripInput } from '@/domain/trip';
 import { newUuid } from '@/lib/uuid';
@@ -7,7 +7,7 @@ import { newUuid } from '@/lib/uuid';
 export async function createTrip(input: TripInput): Promise<Trip> {
   const parsed = TripInputSchema.parse(input);
   const id = newUuid();
-  await db.insert(trips).values({
+  await getDb().insert(trips).values({
     id,
     title: parsed.title,
     startDate: parsed.start_date,
@@ -19,7 +19,7 @@ export async function createTrip(input: TripInput): Promise<Trip> {
 }
 
 export async function listTrips(): Promise<Trip[]> {
-  const rows = await db.select().from(trips);
+  const rows = await getDb().select().from(trips);
   return rows.map((r) => ({
     id: r.id,
     title: r.title,
@@ -31,7 +31,7 @@ export async function listTrips(): Promise<Trip[]> {
 }
 
 export async function getTrip(id: string): Promise<Trip | undefined> {
-  const row = await db.select().from(trips).where(eq(trips.id, id)).get();
+  const row = await getDb().select().from(trips).where(eq(trips.id, id)).get();
   if (!row) return undefined;
   return {
     id: row.id,
@@ -44,11 +44,11 @@ export async function getTrip(id: string): Promise<Trip | undefined> {
 }
 
 export async function deleteTrip(id: string): Promise<void> {
-  await db.delete(trips).where(eq(trips.id, id));
+  await getDb().delete(trips).where(eq(trips.id, id));
 }
 
 export async function findTripByTitle(title: string): Promise<Trip | undefined> {
-  const row = await db.select().from(trips).where(eq(trips.title, title)).get();
+  const row = await getDb().select().from(trips).where(eq(trips.title, title)).get();
   if (!row) return undefined;
   return {
     id: row.id,

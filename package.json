@@ -12,6 +12,7 @@
     "db:generate": "drizzle-kit generate",
     "scrub": "tsx scripts/scrub-seed.ts",
     "smoke": "tsx scripts/smoke.ts",
+    "test:e2e": "tsx tests/e2e/run.ts",
     "seed:export": "tsx scripts/export-itinerary.ts"
   },
   "dependencies": {

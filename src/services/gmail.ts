@@ -1,4 +1,3 @@
-import Constants from 'expo-constants';
 import { getGmailTokens, setGmailTokens, type GmailTokens } from './secrets';
 
 /**
@@ -78,6 +77,10 @@ interface GmailAttachmentResponse {
 
 function getClientId(): string {
   // Loaded from app.config.ts extra. The user pastes their own in README setup.
+  // Deferred require so importing this module never pulls in expo-constants
+  // (which can't load under Node); only the live OAuth refresh path reaches here.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const Constants = (require('expo-constants') as { default: typeof import('expo-constants').default }).default;
   const id = Constants.expoConfig?.extra?.googleClientId;
   if (!id || typeof id !== 'string') {
     throw new Error(

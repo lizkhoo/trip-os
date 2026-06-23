@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { extractionCandidates, gmailSyncState, settings, trips } from '@/db/schema';
 import { autoPromoteAboveThreshold, createCandidate } from './candidates';
 import { extractReservationFromEmailViaHatch } from './extract';
@@ -108,8 +108,8 @@ interface LoadedConfig {
 }
 
 async function loadConfig(): Promise<LoadedConfig> {
-  const settingsRow = await db.select().from(settings).where(eq(settings.id, SETTINGS_ID)).get();
-  const syncRow = await db
+  const settingsRow = await getDb().select().from(settings).where(eq(settings.id, SETTINGS_ID)).get();
+  const syncRow = await getDb()
     .select()
     .from(gmailSyncState)
     .where(eq(gmailSyncState.id, SYNC_STATE_ID))
@@ -155,7 +155,7 @@ function daysAgoGmailDate(days: number): string {
 }
 
 async function loadSeenSourceRefs(): Promise<Set<string>> {
-  const rows = await db
+  const rows = await getDb()
     .select({ ref: extractionCandidates.sourceRef })
     .from(extractionCandidates)
     .where(eq(extractionCandidates.source, 'gmail'));
@@ -163,7 +163,7 @@ async function loadSeenSourceRefs(): Promise<Set<string>> {
 }
 
 async function autoAssignTrip(startAt: string): Promise<string | null> {
-  const all = await db.select().from(trips);
+  const all = await getDb().select().from(trips);
   const matches = all.filter((t) => {
     // A trip claims the date if start_date ≤ local-day(start_at, trip tz) ≤ end_date.
     const day = dateInZone(startAt, t.homeTimezone);
@@ -174,7 +174,7 @@ async function autoAssignTrip(startAt: string): Promise<string | null> {
 
 async function updateLastSyncedAt(historyId: string): Promise<void> {
   const now = nowIso();
-  await db
+  await getDb()
     .insert(gmailSyncState)
     .values({ id: SYNC_STATE_ID, lastSyncedAt: now, lastHistoryId: historyId })
     .onConflictDoUpdate({
