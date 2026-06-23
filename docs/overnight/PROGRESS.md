@@ -16,12 +16,12 @@ Run the e2e suite from the repo root: `pnpm test:e2e` (tsx runs `tests/e2e/run.t
 discovers every `tests/e2e/*.e2e.ts`, runs it in a fresh better-sqlite3 harness, and exits
 non-zero on any failed assertion).
 
-1. **Pathway 1 — Gmail → review → timeline.** `tests/e2e/gmail-to-timeline.e2e.ts`. DONE.
-2. Pathway 4 — trip lifecycle + itinerary derivation. (P2)
-3. Pathway 1 finalize + review/timeline UI. (P3)
-4. Pathway 3 — manual CRUD + edit-guard. (P4)
-5. Pathway 2 — upload → OCR → extract. (P5)
-6. Pathway 5 — cross-path dedup. (P6)
+- [x] **Pathway 1 — Gmail → review → timeline.** `tests/e2e/gmail-to-timeline.e2e.ts`. DONE.
+- [x] **Pathway 4 — trip lifecycle + itinerary derivation.** `tests/e2e/trip-lifecycle.e2e.ts`. DONE.
+- [ ] Pathway 1 finalize + review/timeline UI. (P3)
+- [ ] Pathway 3 — manual CRUD + edit-guard. (P4)
+- [ ] Pathway 2 — upload → OCR → extract. (P5)
+- [ ] Pathway 5 — cross-path dedup. (P6)
 
 ## Phase log
 - P1 Foundation: DONE.
@@ -61,3 +61,31 @@ non-zero on any failed assertion).
     real orchestrator correctly *dedups* the original AS 338 (the replica didn't, which was a bug).
   - **Gates (all green, exit 0):** `pnpm typecheck`, `pnpm lint` (0 warnings),
     `pnpm smoke`, `pnpm test:e2e` (14 assertions pass).
+- P2 Pathway 4 (trip lifecycle + itinerary derivation): DONE.
+  - **`tests/e2e/trip-lifecycle.e2e.ts`** drives the REAL services end to end —
+    `createTrip`/`getTrip`/`deleteTrip`, `findOrCreateLocation` (asserts
+    idempotency on `geocode_query`), `createReservation`/`listReservationsForTrip`
+    — then the REAL derivations `buildItineraryDays`, `getCityGroups`, `nightOfM`,
+    `getTransitPairs`.
+  - **Trip modeled:** Japan, Asia/Tokyo, 2026-03-14..03-19 (6 days inclusive),
+    Tokyo hotel (2 nights) → Shinkansen → Kyoto ryokan (2 nights) → ITM departure.
+    Reservations span flight/lodging/transit/activity types across days/cities.
+  - **Asserts:** all 6 days enumerated; arrival flight + check-in share day 1;
+    checkout/transit/check-in all intersect the changeover day (03-16); city labels
+    derive from lodging geocode (Tokyo, Kyoto) and fall back to the departure flight
+    location (Osaka) when no lodging covers the night; city groups ordered
+    Tokyo > … > Osaka with a url-safe slug; `nightOfM` gives 1/2, 2/2, and null on
+    checkout morning; transit pair Tokyo hotel → Kyoto ryokan emitted with correct
+    geocode from/to queries; `deleteTrip` FK-cascades the reservations away.
+  - **No new harness/services needed** — reused `createHarness` and the DB port; no
+    mocks (this pathway has no network boundary). No storage import, so no new hatch.
+  - **Gates (all green, exit 0):** `pnpm typecheck`, `pnpm lint` (0 warnings),
+    `pnpm smoke`, `pnpm test:e2e` (48 assertions pass: 14 pathway 1 + 34 pathway 4).
+
+## P2 — Pathway 4 (trip lifecycle + itinerary derivation) — outcome
+- **Files added:** `tests/e2e/trip-lifecycle.e2e.ts` (untracked — orchestrator to commit).
+- **Files changed:** `docs/overnight/PROGRESS.md`.
+- **Pathway test:** `tests/e2e/trip-lifecycle.e2e.ts`. Run with `pnpm test:e2e` from the repo
+  root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":48}`.
+- **Blockers:** none.
