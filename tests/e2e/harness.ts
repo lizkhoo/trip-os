@@ -25,6 +25,8 @@ import {
   type GmailProfile,
 } from '@/services/gmail';
 import { __setSecretsForTest, type GmailTokens } from '@/services/secrets';
+import { __setStorageForTest, type AttachmentKind } from '@/services/storage';
+import { __setOcrForTest } from '@/services/ocr';
 
 export interface Harness {
   /** Raw better-sqlite3 handle, for direct SQL assertions if a test needs them. */
@@ -70,6 +72,8 @@ export function createHarness(): Harness {
       __setExtractForTest(null);
       __setGmailForTest(null);
       __setSecretsForTest(null);
+      __setStorageForTest(null);
+      __setOcrForTest(null);
       raw.close();
     },
   };
@@ -139,5 +143,73 @@ export function installMockExtract(
     ): Promise<ExtractionResult> => {
       throw new Error('mock extract: attachment extraction not configured');
     },
+  });
+}
+
+/** A put() call recorded by installMockStorage. */
+export interface MockStoragePut {
+  sourceUri: string;
+  kind: AttachmentKind;
+  storageUri: string;
+}
+
+/**
+ * Install a deterministic in-memory storage via the storage test hatch. put()
+ * records the call and returns a deterministic storage_uri derived from the
+ * source uri (so the upload orchestrator's storage_uri is assertable). get()
+ * reports anything we've "stored" as existing. Returns the recorder array.
+ */
+export function installMockStorage(): MockStoragePut[] {
+  const puts: MockStoragePut[] = [];
+  const stored = new Set<string>();
+  let n = 0;
+  __setStorageForTest({
+    put: async (sourceUri, kind) => {
+      n += 1;
+      const ext = kind === 'pdf' ? 'pdf' : 'jpg';
+      const storageUri = `file:///mock/uploads/attachment-${n}.${ext}`;
+      puts.push({ sourceUri, kind, storageUri });
+      stored.add(storageUri);
+      return storageUri;
+    },
+    get: async (uri) => ({ exists: stored.has(uri), size: stored.has(uri) ? 1024 : 0 }),
+    remove: async (uri) => {
+      stored.delete(uri);
+    },
+  });
+  return puts;
+}
+
+/**
+ * Install a deterministic OCR via the ocr test hatch. Returns the same fixture
+ * text for any uri (or a per-uri map when given one).
+ */
+export function installMockOcr(text: string | Map<string, string>): void {
+  __setOcrForTest(async (uri: string): Promise<string> => {
+    if (typeof text === 'string') return text;
+    const t = text.get(uri);
+    if (t === undefined) throw new Error(`mock ocr: no text for ${uri}`);
+    return t;
+  });
+}
+
+/**
+ * Install a deterministic Claude vision extraction for attachments via the
+ * extract test hatch. The upload orchestrator mints the source_ref (run id)
+ * internally, so the test can't key on it; instead pass a builder that receives
+ * the orchestrator's args (including source_ref) and returns the result, so the
+ * proposal can echo the run id. Mirrors the real extract.ts which stamps
+ * source_ref onto the proposal it returns.
+ */
+export function installMockAttachmentExtract(
+  build: (args: AttachmentExtractionArgs) => ExtractionResult,
+): void {
+  __setExtractForTest({
+    extractReservationFromEmail: async (): Promise<ExtractionResult> => {
+      throw new Error('mock extract: email extraction not configured');
+    },
+    extractReservationFromAttachment: async (
+      args: AttachmentExtractionArgs,
+    ): Promise<ExtractionResult> => build(args),
   });
 }

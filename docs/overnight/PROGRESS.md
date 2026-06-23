@@ -19,7 +19,7 @@ non-zero on any failed assertion).
 - [x] **Pathway 1 — Gmail → review → timeline.** `tests/e2e/gmail-to-timeline.e2e.ts`. DONE.
 - [x] **Pathway 4 — trip lifecycle + itinerary derivation.** `tests/e2e/trip-lifecycle.e2e.ts`. DONE.
 - [x] **Pathway 3 — manual CRUD + edit-guard.** `tests/e2e/manual-crud.e2e.ts`. DONE.
-- [ ] Pathway 2 — upload → OCR → extract. (P4/P5)
+- [x] **Pathway 2 — upload → OCR → extract → review → timeline.** `tests/e2e/upload-to-timeline.e2e.ts`. DONE.
 - [ ] Pathway 5 — cross-path dedup. (P5/P6)
 
 ## Phase log
@@ -134,3 +134,61 @@ non-zero on any failed assertion).
   root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
 - **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":71}`.
 - **Blockers:** none. Canonical pathways now at 3 of ≤5.
+
+## P4 — Pathway 2 (upload → OCR → extract → review → timeline) — DONE
+- **Prereq fixes (Node-runnability):**
+  - `src/services/storage.ts`: removed the MODULE-TOP `import { Directory, File, Paths }
+    from 'expo-file-system'`. The import is now deferred inside each function via
+    `import('expo-file-system')` (mirrors extract.ts readFileAsBase64), so importing
+    storage.ts under tsx/Node no longer loads the native module. `get`/`remove` became
+    `async` as a result (no existing callers depended on the old sync signatures). Added a
+    test hatch `__setStorageForTest(overrides | null)` plus `put/get/removeViaHatch`
+    wrappers (mirrors extract.ts `__setExtractForTest`).
+  - NEW `src/services/ocr.ts`: `ocrImage(uri)` production stub throws
+    `'OCR native module not available'` (Apple Vision bridge not wired yet), plus
+    `__setOcrForTest(fn | null)` and `ocrImageViaHatch` — same hatch shape as extract.ts.
+- **NEW `src/services/syncUpload.ts`:** `runUploadSync({ uri, kind })` mirrors
+  `runGmailSync`'s structure over the file→OCR→vision boundary, all via real
+  services/hatches: `putViaHatch` → storage_uri, `ocrImageViaHatch`,
+  `extractReservationFromAttachmentViaHatch({ ocr_text, image_uris:[storage_uri],
+  source_ref })`, insert an `attachments` row (kind, storage_uri, ocr_text,
+  extraction_run_id = the run id), `createCandidate(source='upload', source_ref = run id)`,
+  trip auto-assign (single trip whose range contains start_at, same style as syncGmail) +
+  sync-time dedup, then `autoPromoteAboveThreshold(threshold)`. CRITICAL invariant:
+  `attachments.extraction_run_id === candidate.source_ref` (one minted uuid `runId`) so
+  `acceptCandidate` back-fills `attachments.reservation_id` on accept. Re-exports the
+  storage/ocr/extract hatches like syncGmail re-exports gmail/extract.
+- **HARNESS (`tests/e2e/harness.ts`):** added `installMockStorage()` (records `put()`
+  calls, returns deterministic `file:///mock/uploads/attachment-N.<ext>` storage uris,
+  tracks "stored" set for get/remove), `installMockOcr(text | Map)`, and
+  `installMockAttachmentExtract(build)` — the builder receives the orchestrator's args
+  (incl. the minted `source_ref`) since the test can't know the run id ahead of time, so
+  the proposal echoes the run id like the real extract.ts does. `teardown()` now also
+  resets the storage + ocr hatches. Existing API untouched.
+- **`tests/e2e/upload-to-timeline.e2e.ts`** drives the REAL `runUploadSync` through the DB
+  port:
+  - A (hi-conf auto-promote): a screenshot extracts ONE lodging (0.96 ≥ 0.9) in range.
+    Asserts storage.put ran with the picked uri/kind; attachment row has the storage_uri +
+    ocr_text + kind; candidate exists with `source='upload'` and auto-promoted to accepted;
+    exactly one reservation (source='upload'); the attachment's `reservation_id` is ACTUALLY
+    populated and == the new reservation id (linkage asserted, not inferred); and
+    `buildItineraryDays` lands the lodging on the check-in day.
+  - B (lo-conf manual accept): a PDF extracts a 0.55 dining → stays pending; attachment
+    `reservation_id` is null before accept; the REAL `acceptCandidate(id,{trip_id})` accepts
+    AND the attachment's `reservation_id` is populated == accepted reservation id afterward;
+    timeline includes the dining on its day. All `assertEqual` compares primitives.
+- **UI (typecheck-gated):** `app/(consumer)/upload.tsx` — pick a screenshot
+  (expo-image-picker) or PDF (expo-document-picker) → REAL `runUploadSync`, shows
+  idle/running/done/error progress and routes back. Not the verification surface.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":106}`
+  (106 = 14 pathway 1 + 23 pathway 3 + 34 pathway 4 + 35 pathway 2).
+- **Blockers:** none. Canonical pathways now at 4 of ≤5 (cross-path dedup is the 5th, P5).
+
+## P4 — Pathway 2 (upload → OCR → extract) — outcome
+- **Files added:** `src/services/ocr.ts`, `src/services/syncUpload.ts`,
+  `tests/e2e/upload-to-timeline.e2e.ts`, `app/(consumer)/upload.tsx` (untracked —
+  orchestrator to commit).
+- **Files changed:** `src/services/storage.ts` (deferred expo-file-system import + hatch),
+  `tests/e2e/harness.ts` (mock storage/ocr/attachment-extract + teardown), this log.
+- **Pathway test:** `tests/e2e/upload-to-timeline.e2e.ts`. Run with `pnpm test:e2e`.
+- **Blockers:** none. Pathways now at 4 of ≤5.
