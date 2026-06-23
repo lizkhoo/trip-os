@@ -1,3 +1,74 @@
+# MORNING REPORT
+
+**Branch:** `overnight-mvp` (off `gmail-ingestion`). All four gates GREEN at end of run:
+`pnpm typecheck`, `pnpm lint` (0 warnings), `pnpm smoke`, `pnpm test:e2e`.
+
+## (i) The 5 canonical e2e pathways
+Run them all with one command from the repo root: **`pnpm test:e2e`** (discovers every
+`tests/e2e/*.e2e.ts`, runs each in a fresh in-memory better-sqlite3 harness, non-zero exit on any
+failure). **Total: 139 assertions, 0 failures.**
+
+1. **gmail-to-timeline** (`tests/e2e/gmail-to-timeline.e2e.ts`) — mock Gmail + mock Claude → REAL
+   `runGmailSync` → hi-conf auto-promoted / lo-conf pending → REAL `acceptCandidate` → reservations
+   land on the right days via `buildItineraryDays`.
+2. **trip-lifecycle** (`tests/e2e/trip-lifecycle.e2e.ts`) — REAL `createTrip`/`findOrCreateLocation`/
+   `createReservation` then REAL `buildItineraryDays`/`getCityGroups`/`nightOfM`/`getTransitPairs`
+   (day cards, city groups, night N of M, transit pairs, FK-cascade on delete).
+3. **manual-crud** (`tests/e2e/manual-crud.e2e.ts`) — manual create → edit (stamps
+   `manually_edited_at`) → re-sync edit-guard (edited row survives; a never-edited row IS updated) →
+   delete. Two-branch guard, not just "never overwrites".
+4. **upload-to-timeline** (`tests/e2e/upload-to-timeline.e2e.ts`) — mock file + mock OCR + mock
+   vision → REAL `runUploadSync` → attachment stored + candidate → accept → `attachments.reservation_id`
+   ACTUALLY populated (linkage asserted) → on timeline.
+5. **cross-path-dedup** (`tests/e2e/cross-path-dedup.e2e.ts`) — same logical reservation via Gmail
+   AND Upload collapses to ONE row (both orderings + a negative control). Enforced by production
+   `dedup.ts` + `findDuplicateReservation`, not by the test.
+
+## (ii) What shipped
+- **DB port** (`src/db/client.ts`): lazy `getDb()` + `__setDbForTest`; no service imports a module-top
+  db, so drizzle runs on better-sqlite3 under Node.
+- **E2E harness + runner** (`tests/e2e/harness.ts`, `runner.ts`, `run.ts`) + `pnpm test:e2e`.
+- **All 5 pathways above** driving the REAL services/orchestrators through the DB port.
+- **Screens (this run, P6 — typecheck/lint-gated only):**
+  - `app/(consumer)/index.tsx` — home: REAL `listTrips`, pull-to-refresh triggers REAL `runGmailSync`,
+    + "New trip" CTA (already present; left as-is).
+  - `app/(consumer)/trips/new.tsx` — REAL `createTrip` with a home-timezone Select from
+    `src/lib/timezones.ts`.
+  - `app/(consumer)/trips/[id]/index.tsx` — trip timeline: REAL `getTrip`/`listReservationsForTrip` +
+    locations → `buildItineraryDays`/`getCityGroups`/`nightOfM`, rendered with
+    Timeline/DayHeader/ReservationBadge/ConfidenceChip (city headers, day cards, "Night N of M").
+  - `app/(admin)/review/index.tsx` — REAL `listPendingCandidates` + a separate "Dedup hits" section
+    listing `status='merged_into'` candidates labelled Merged.
+  - `app/(admin)/review/[id].tsx` — REAL `getCandidate` + `acceptCandidate(id,{trip_id})` /
+    `rejectCandidate`, trip Select when unassigned; merged candidates shown read-only.
+  - Pre-existing: `app/(consumer)/reservations/edit.tsx`, `app/(consumer)/upload.tsx`,
+    `app/(admin)/settings/index.tsx`, `app/(admin)/connect/index.tsx`.
+  - Navigation: home → trip detail → Review → accept. Existing `(consumer)`/`(admin)` Stack layouts
+    resolve the new nested routes; no new `_layout.tsx` needed.
+
+## (iii) What still needs a Mac/simulator (NOT verified here)
+- **All UI is typecheck/lint-gated only** — there is no iOS simulator in this environment, so no
+  screen has been rendered or interaction-tested. The e2e suite is the correctness surface.
+- **Apple Vision OCR** is not implemented: `src/services/ocr.ts` `ocrImage()` is a production STUB that
+  throws `'OCR native module not available'`. Upload extraction is only exercised via the test hatch.
+- **Map / geocoding** is not implemented (no real geocoder; `appleMapsDirectionsUrl`/
+  `googleMapsDirectionsUrl` build URLs but nothing renders a map).
+
+## (iv) Known follow-ups / risks (carried from phase reviews)
+- **`deriveCity` row-order nondeterminism on changeover days**: when a day has no covering lodging,
+  the city falls back to the first reservation with a location in `todays` order — on a checkout/
+  check-in changeover day this can be ambiguous. Consider sorting by `start_at` before deriving.
+- **UTC-midnight night math assumes no DST in the home zone**: `nightOfM`/`enumerateDays` count days
+  via UTC midnights, so a DST transition inside the home zone could miscount a night. Fine for the
+  modeled zones (e.g. Asia/Tokyo, no DST); revisit before supporting DST home zones.
+- **Production `ocr.ts` is a stub that throws** (see iii) — wire the Apple Vision native module before
+  shipping upload on device.
+- **Review queue should keep presenting `merged_into` candidates as dedup hits** (done in
+  `app/(admin)/review`): a merged candidate may STILL carry an attachment that was linked to the
+  existing reservation — don't assume none.
+
+---
+
 # Overnight MVP run — progress log
 
 Newest entries at the bottom. Each phase: what was attempted, gate results, what's next.
@@ -253,3 +324,26 @@ non-zero on any failed assertion).
   the repo root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
 - **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`.
 - **Blockers:** none. Canonical pathways COMPLETE at the final 5 of ≤5.
+
+## P6 — UI consolidation + hardening + morning report — DONE
+- **No new e2e pathway** (stays at exactly 5). No service behavior changed — UI wires to existing
+  REAL services only.
+- **Screens added/wired (typecheck + lint gated; NOT runtime-verified — no simulator):**
+  - `app/(consumer)/trips/new.tsx` — REAL `createTrip` + home-timezone Select from `src/lib/timezones.ts`,
+    routes to the new trip detail.
+  - `app/(consumer)/trips/[id]/index.tsx` — REAL `getTrip`/`listReservationsForTrip` + all locations →
+    `buildItineraryDays`/`getCityGroups`/`nightOfM`; renders city headers + day cards with
+    Timeline/DayHeader/ReservationBadge/ConfidenceChip ("Night N of M" on multi-night lodging); links to
+    add/upload/review.
+  - `app/(admin)/review/index.tsx` — REAL `listPendingCandidates` list + a separate "Dedup hits" section
+    querying `status='merged_into'` candidates, labelled Merged.
+  - `app/(admin)/review/[id].tsx` — REAL `getCandidate` + `acceptCandidate(id,{trip_id})` /
+    `rejectCandidate`; trip Select when the candidate has no auto-assigned trip; merged candidates are
+    read-only with a dedup-hit note (and the note flags that a merged candidate may still carry an
+    attachment).
+  - `app/(consumer)/index.tsx` left as-is (already lists trips via REAL `listTrips`, pull-to-refresh
+    triggers REAL `runGmailSync`, "New trip" CTA → `/trips/new`).
+  - No new `_layout.tsx` needed — the `(consumer)`/`(admin)` Stack layouts resolve the nested routes;
+    cross-group hrefs (`/review`, `/trips/[id]`) resolve via the global Expo Router route map.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`.
+- **Blockers:** none. See the MORNING REPORT at the top of this file for the full handoff.
