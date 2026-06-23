@@ -34,16 +34,20 @@ typecheck-gated but are not the verification surface (they can't render headless
 Final set may merge/trim to stay ≤5; PROGRESS.md records the canonical list + how to run them.
 
 ## Phases (each = one background Workflow, chained by the lead)
-- **P0 (done, inline):** branch, promote sole-copy helpers, delete stale dupes, bump model id
-  `claude-opus-4-7`→`claude-opus-4-8`, write these docs.
-- **P1 Foundation:** lazy/injectable `@/db/client` (`getDb()` + `__setDbForTest`), `tests/e2e/`
-  harness (better-sqlite3 + drizzle + migrations + hatches), `pnpm test:e2e` runner, convert the
-  smoke gmail logic to drive REAL `runGmailSync` = pathway 1 first cut. Gate: typecheck+smoke+e2e green.
-- **P2 Pathway 4** (trip lifecycle + derivation) — most self-contained, validates the harness.
-- **P3 Pathway 1** (Gmail→review→timeline) finalize + review-queue/timeline UI (typecheck-gated).
-- **P4 Pathway 3** (manual CRUD + edit-guard) + manual reservation UI.
-- **P5 Pathway 2** (upload→OCR→extract) — `runUploadSync` with injectable OCR hatch + upload UI.
-- **P6 Pathway 5** (cross-path dedup) + hardening: full typecheck/lint/smoke/e2e green, final report.
+Pathways prioritized first (the deliverable); UI is typecheck-gated and comes after all 5 pass.
+- **P0 (done):** branch, promote helpers, delete dupes, bump model id, docs.
+- **P1 Foundation (done):** lazy/injectable `@/db/client`, `tests/e2e/` harness + runner,
+  `pnpm test:e2e`, **pathway 1 (Gmail→review→timeline)** against REAL `runGmailSync`.
+- **P2 (done): Pathway 4** — trip lifecycle + itinerary derivation.
+- **P3: Pathway 3** — manual reservation CRUD + `manually_edited_at` re-sync edit-guard (two-branch:
+  edited survives, non-edited may update). Pure DB, no new boundaries.
+- **P4: Pathway 2** — upload→OCR→extract. FIRST defer `storage.ts` expo-file-system import + add a
+  storage test hatch + an OCR hatch + attachments-capable mock; build `runUploadSync`. Assert the
+  attachment row's `reservationId` is actually populated (don't infer linkage).
+- **P5: Pathway 5** — cross-path dedup: same reservation via gmail AND via upload → ONE reservation
+  row remains (drive through real accept/sync, not just `computeDedupKey`).
+- **P6: UI + hardening** — review-queue, trip timeline, manual-reservation, upload, trip create/edit
+  screens (typecheck-gated, wired to real services); full typecheck/lint/smoke/e2e green; morning report.
 
 ## Orchestrator protocol (per phase Workflow)
 Single implementer at a time (shared working tree — no parallel file writes), then independent
