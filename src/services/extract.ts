@@ -47,8 +47,8 @@ export interface AttachmentExtractionArgs {
   hint_trip_id?: string | null;
 }
 
-// Opus 4-7 for email: reasoning-heavy free-text → structured needs the strongest model.
-const MODEL_EMAIL = 'claude-opus-4-7';
+// Opus 4-8 for email: reasoning-heavy free-text → structured needs the strongest model.
+const MODEL_EMAIL = 'claude-opus-4-8';
 // Sonnet 4-6 for vision: cheaper + faster on image inputs where OCR text already
 // carries most of the signal; vision is just for layout/branding tie-breaks.
 const MODEL_VISION = 'claude-sonnet-4-6';
