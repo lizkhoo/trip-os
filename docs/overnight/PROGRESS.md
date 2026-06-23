@@ -18,10 +18,9 @@ non-zero on any failed assertion).
 
 - [x] **Pathway 1 — Gmail → review → timeline.** `tests/e2e/gmail-to-timeline.e2e.ts`. DONE.
 - [x] **Pathway 4 — trip lifecycle + itinerary derivation.** `tests/e2e/trip-lifecycle.e2e.ts`. DONE.
-- [ ] Pathway 1 finalize + review/timeline UI. (P3)
-- [ ] Pathway 3 — manual CRUD + edit-guard. (P4)
-- [ ] Pathway 2 — upload → OCR → extract. (P5)
-- [ ] Pathway 5 — cross-path dedup. (P6)
+- [x] **Pathway 3 — manual CRUD + edit-guard.** `tests/e2e/manual-crud.e2e.ts`. DONE.
+- [ ] Pathway 2 — upload → OCR → extract. (P4/P5)
+- [ ] Pathway 5 — cross-path dedup. (P5/P6)
 
 ## Phase log
 - P1 Foundation: DONE.
@@ -89,3 +88,49 @@ non-zero on any failed assertion).
   root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
 - **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":48}`.
 - **Blockers:** none.
+
+## P3 — Pathway 3 (manual reservation CRUD + re-sync edit-guard) — DONE
+- **Service completeness:** no new service code needed. `createReservation`,
+  `updateReservation(id, patch, { manual })` (stamps `manually_edited_at` via `nowIso()`
+  when `manual:true`), `deleteReservation`, `findDuplicateReservation`, and the
+  two-branch edit-guard in `candidates.autoPromoteAboveThreshold` (marks a dup
+  candidate `merged_into` and only calls `updateReservation(dup, .., { manual:false })`
+  when `dup.manually_edited_at` is null) were all already present and correct.
+- **`tests/e2e/manual-crud.e2e.ts`** drives the REAL services through the DB port:
+  - A) MANUAL CREATE — `createReservation(source:'manual')` persists + lands on its day
+    in `buildItineraryDays`.
+  - B) MANUAL EDIT — `updateReservation(id, {title}, { manual:true })` changes the field
+    and stamps a non-null `manually_edited_at`.
+  - C) EDIT-GUARD (protected) — a hi-conf gmail candidate whose flight proposal dedups
+    to the edited reservation (same carrier/flight_number/date — NOT the title) is marked
+    `merged_into` pointing at the existing row, and the user's edited title is UNCHANGED;
+    no duplicate row created.
+  - D) UPDATE-ALLOWED — a SECOND, never-edited reservation + matching dup candidate IS
+    overwritten from the proposal (`manual:false` branch ran), proving the two-branch
+    behavior (not just "never overwrites"). Sync update leaves `manually_edited_at` null.
+  - E) DELETE — `deleteReservation` removes it from `listReservationsForTrip` and from
+    `buildItineraryDays` output.
+  - Dedup is exercised through the REAL `findDuplicateReservation`/`dedup.ts`; flight key
+    is date-only so jittered candidate times still dedup. All `assertEqual` compares
+    primitives (no deepEqual needed).
+- **UI (typecheck-gated):** `app/(consumer)/reservations/edit.tsx` — manual add/edit screen
+  using `Input`/`Select`/`DateTimePicker`/`Button`, calling the real
+  create/update/deleteReservation; inline edits pass `{ manual: true }`. Builds offset-aware
+  ISO timestamps from the picker via `composeIso` + the trip's home timezone. Not the
+  verification surface.
+- **No harness changes** — reused `createHarness`. No storage import, so no new hatch.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":71}`
+  (71 = 14 pathway 1 + 23 pathway 3 + 34 pathway 4).
+- **Blockers:** none. Pathways now at 3 of ≤5.
+
+## P3 — Manual reservation CRUD + re-sync edit-guard — outcome
+- **Files added:** `tests/e2e/manual-crud.e2e.ts`, `app/(consumer)/reservations/edit.tsx`
+  (both untracked — orchestrator to commit).
+- **Files changed:** `docs/overnight/PROGRESS.md`. No new service/harness code (existing
+  `createReservation`/`updateReservation(...,{manual})`/`deleteReservation`/
+  `findDuplicateReservation` + the two-branch edit-guard in
+  `candidates.autoPromoteAboveThreshold` were already correct).
+- **Pathway test:** `tests/e2e/manual-crud.e2e.ts`. Run with `pnpm test:e2e` from the repo
+  root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":71}`.
+- **Blockers:** none. Canonical pathways now at 3 of ≤5.
