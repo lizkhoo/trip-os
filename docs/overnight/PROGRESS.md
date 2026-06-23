@@ -20,7 +20,7 @@ non-zero on any failed assertion).
 - [x] **Pathway 4 — trip lifecycle + itinerary derivation.** `tests/e2e/trip-lifecycle.e2e.ts`. DONE.
 - [x] **Pathway 3 — manual CRUD + edit-guard.** `tests/e2e/manual-crud.e2e.ts`. DONE.
 - [x] **Pathway 2 — upload → OCR → extract → review → timeline.** `tests/e2e/upload-to-timeline.e2e.ts`. DONE.
-- [ ] Pathway 5 — cross-path dedup. (P5/P6)
+- [x] **Pathway 5 — cross-path dedup (Gmail + Upload → one reservation).** `tests/e2e/cross-path-dedup.e2e.ts`. DONE.
 
 ## Phase log
 - P1 Foundation: DONE.
@@ -192,3 +192,64 @@ non-zero on any failed assertion).
   `tests/e2e/harness.ts` (mock storage/ocr/attachment-extract + teardown), this log.
 - **Pathway test:** `tests/e2e/upload-to-timeline.e2e.ts`. Run with `pnpm test:e2e`.
 - **Blockers:** none. Pathways now at 4 of ≤5.
+
+## P5 — Pathway 5 (cross-path dedup: Gmail + Upload → ONE reservation) — DONE
+- **Contract:** the same logical reservation arriving via BOTH ingestion paths collapses to
+  exactly ONE reservation row, enforced by PRODUCTION code (shared `dedup.ts` +
+  `reservations.findDuplicateReservation`, called from BOTH `runGmailSync` and `runUploadSync`
+  at sync time, and again inside `candidates.autoPromoteAboveThreshold` before any reservation
+  is created). The test does NOT encode dedup.
+- **No service changes needed** — both orchestrators already call `findDuplicateReservation`
+  before creating a reservation, and `autoPromoteAboveThreshold` re-checks for a dup and marks
+  the candidate `merged_into` (pointing at the existing reservation) instead of inserting a
+  second row. Verified the contract holds in both orderings without touching production code.
+- **`tests/e2e/cross-path-dedup.e2e.ts`** drives the REAL `runGmailSync` + `runUploadSync`
+  through the DB port:
+  - CASE 1 (Gmail first, then Upload): gmail auto-promotes a hi-conf flight (NH 110, 2026-03-15
+    Asia/Tokyo) → ONE reservation (source='gmail'). An upload of the SAME logical flight (DIFFERENT
+    title + a seat + a different time-of-day, all of which are deliberately NOT in the flight dedup
+    key of carrier/flight_number/date-in-zone) then runs: STILL exactly ONE reservation, it's the
+    original gmail row, the upload candidate is status='merged_into' with
+    merged_into_reservation_id == the gmail reservation id, and the upload's attachments row was
+    STILL created (file kept despite the dedup).
+  - CASE 2 (reverse order, SEPARATE fresh harness): upload auto-promotes first (source='upload'),
+    then gmail syncs the same flight → still ONE reservation, gmail candidate merged_into the upload
+    reservation. Proves dedup is order-independent / lives in shared code, not one path.
+  - CASE 3 (negative control): a DIFFERENT flight (flight_number 22) via the second path creates a
+    SECOND reservation (candidate accepted, not merged) — proves the dedup key actually discriminates
+    and the test isn't trivially always-merging.
+  - All `assertEqual` compares primitives (counts, ids, status strings) per the Object.is runner.
+- **Test-harness note (NOT a production bug):** CASE 2 stands up a second `createHarness()` inside the
+  running test; its `teardown()` nulls the module-global hatches, INCLUDING the DB port
+  (`__setDbForTest(null)`). The test re-injects CASE 1's harness DB via `__setDbForTest(harness.db)`
+  after the nested teardown so CASE 3 keeps talking to the in-memory DB instead of falling through to
+  the lazy expo-sqlite client (which would crash under Node). Production code is untouched.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`
+  (139 = 14 pathway 1 + 23 pathway 3 + 34 pathway 4 + 35 pathway 2 + 33 pathway 5).
+- **Blockers:** none. Canonical pathways now at the FINAL 5 of ≤5:
+  gmail-to-timeline, trip-lifecycle, manual-crud, upload-to-timeline, cross-path-dedup.
+
+## P5 — Pathway 5 (cross-path dedup) — outcome
+- **Files added:** `tests/e2e/cross-path-dedup.e2e.ts` (untracked — orchestrator to commit).
+- **Files changed:** `docs/overnight/PROGRESS.md`. No new service/harness code (existing shared
+  `dedup.ts` + `findDuplicateReservation` + the dedup branch in `autoPromoteAboveThreshold`,
+  called by BOTH `runGmailSync` and `runUploadSync`, already enforce the contract).
+- **Pathway test:** `tests/e2e/cross-path-dedup.e2e.ts`. Run with `pnpm test:e2e`.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`.
+- **Blockers:** none. The set of 5 MVP end-to-end pathways is COMPLETE.
+
+## P5 — Cross-path dedup contract (Gmail + Upload -> one reservation)
+- **Files added:** `tests/e2e/cross-path-dedup.e2e.ts` (untracked — orchestrator to commit).
+- **Files changed:** `docs/overnight/PROGRESS.md`. No new service/harness code: the contract is
+  enforced by PRODUCTION code already in place — shared `src/services/dedup.ts` +
+  `reservations.findDuplicateReservation`, called at sync time by BOTH `runGmailSync` and
+  `runUploadSync`, and re-checked inside `candidates.autoPromoteAboveThreshold` (marks the second
+  candidate `merged_into` instead of inserting a second reservation). The test does NOT encode dedup.
+- **What it proves:** the same logical reservation arriving via both ingestion paths collapses to
+  exactly ONE row. CASE 1 Gmail-then-Upload, CASE 2 Upload-then-Gmail (separate harness, order-
+  independent), CASE 3 negative control (a genuinely different flight creates a 2nd reservation).
+  Attachment rows are kept even when the upload candidate is merged.
+- **Pathway test + how to run:** `tests/e2e/cross-path-dedup.e2e.ts`. Run with `pnpm test:e2e` from
+  the repo root (discovers all `tests/e2e/*.e2e.ts`; non-zero exit on any failed assertion).
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`.
+- **Blockers:** none. Canonical pathways COMPLETE at the final 5 of ≤5.
