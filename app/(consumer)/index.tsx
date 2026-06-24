@@ -61,6 +61,12 @@ export default function TripsIndex() {
         ) : (
           trips.map((t) => <TripRow key={t.id} trip={t} />)
         )}
+
+        <View className="mt-8 items-center">
+          <Link href="/dev" asChild>
+            <Button title="Dev tools / load sample" variant="ghost" size="sm" />
+          </Link>
+        </View>
       </PullToRefresh>
     </SafeAreaView>
   );
