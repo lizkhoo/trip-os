@@ -8,14 +8,12 @@
  *   - `runSeed()` exported for the dev screen to call on-device.
  *   - `tsx scripts/seed.ts` runs against a Node-side in-memory better-sqlite3 (used by smoke.ts).
  */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { composeIso } from '@/lib/time';
 import type { ReservationInput } from '@/domain/reservation';
-
-const ROOT = path.resolve(__dirname, '..');
-const PRIVATE = path.join(ROOT, 'seed/japan-2026.private.json');
-const PUBLIC = path.join(ROOT, 'seed/japan-2026.json');
+// Imported as a module (not fs-read) so this file bundles under React Native too —
+// the app's dev screen calls runSeed() on-device. Node (smoke/e2e) resolves the
+// JSON import the same way. The committed file is the scrubbed/public fixture.
+import seedDaysJson from '../seed/japan-2026.json';
 
 const TRIP_TITLE = 'Japan 2026';
 const TRIP_TZ = 'Asia/Tokyo';
@@ -73,12 +71,7 @@ export interface SeedDeps {
 }
 
 function loadDays(): SeedDay[] {
-  const source = fs.existsSync(PRIVATE) ? PRIVATE : PUBLIC;
-  if (!fs.existsSync(source)) {
-    throw new Error(`seed: neither ${PRIVATE} nor ${PUBLIC} exists`);
-  }
-  const raw = fs.readFileSync(source, 'utf8');
-  return JSON.parse(raw) as SeedDay[];
+  return seedDaysJson as unknown as SeedDay[];
 }
 
 function parseTime(timeStr: string | undefined): string | null {
@@ -379,10 +372,3 @@ export async function runSeed(): Promise<SeedSummary> {
   });
 }
 
-if (require.main === module) {
-  // CLI use: only meaningful via the smoke test, which provides its own in-memory deps.
-  console.error(
-    'scripts/seed.ts is meant to be imported. For Node-side smoke testing, run `pnpm smoke`.',
-  );
-  process.exit(1);
-}
