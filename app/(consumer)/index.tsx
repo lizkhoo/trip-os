@@ -62,7 +62,13 @@ export default function TripsIndex() {
           trips.map((t) => <TripRow key={t.id} trip={t} />)
         )}
 
-        <View className="mt-8 items-center">
+        <View className="mt-8 gap-1 items-center border-t border-paper-dim pt-4">
+          <Link href="/settings" asChild>
+            <Button title="Settings (Anthropic key)" variant="ghost" size="sm" />
+          </Link>
+          <Link href="/connect" asChild>
+            <Button title="Connect Gmail" variant="ghost" size="sm" />
+          </Link>
           <Link href="/dev" asChild>
             <Button title="Dev tools / load sample" variant="ghost" size="sm" />
           </Link>
