@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { locations } from '@/db/schema';
 import { LocationInputSchema, type Location, type LocationInput } from '@/domain/location';
 import { newUuid } from '@/lib/uuid';
@@ -20,7 +20,7 @@ function toDomain(row: typeof locations.$inferSelect): Location {
 export async function createLocation(input: LocationInput): Promise<Location> {
   const parsed = LocationInputSchema.parse(input);
   const id = newUuid();
-  await db.insert(locations).values({
+  await getDb().insert(locations).values({
     id,
     name: parsed.name,
     address: parsed.address ?? null,
@@ -34,7 +34,7 @@ export async function createLocation(input: LocationInput): Promise<Location> {
 }
 
 export async function findLocationByQuery(geocodeQuery: string): Promise<Location | undefined> {
-  const row = await db
+  const row = await getDb()
     .select()
     .from(locations)
     .where(eq(locations.geocodeQuery, geocodeQuery))

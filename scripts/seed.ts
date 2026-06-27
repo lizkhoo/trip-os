@@ -8,14 +8,12 @@
  *   - `runSeed()` exported for the dev screen to call on-device.
  *   - `tsx scripts/seed.ts` runs against a Node-side in-memory better-sqlite3 (used by smoke.ts).
  */
-import * as fs from 'node:fs';
-import * as path from 'node:path';
 import { composeIso } from '@/lib/time';
 import type { ReservationInput } from '@/domain/reservation';
-
-const ROOT = path.resolve(__dirname, '..');
-const PRIVATE = path.join(ROOT, 'seed/japan-2026.private.json');
-const PUBLIC = path.join(ROOT, 'seed/japan-2026.json');
+// Imported as a module (not fs-read) so this file bundles under React Native too —
+// the app's dev screen calls runSeed() on-device. Node (smoke/e2e) resolves the
+// JSON import the same way. The committed file is the scrubbed/public fixture.
+import seedDaysJson from '../seed/japan-2026.json';
 
 const TRIP_TITLE = 'Japan 2026';
 const TRIP_TZ = 'Asia/Tokyo';
@@ -73,12 +71,7 @@ export interface SeedDeps {
 }
 
 function loadDays(): SeedDay[] {
-  const source = fs.existsSync(PRIVATE) ? PRIVATE : PUBLIC;
-  if (!fs.existsSync(source)) {
-    throw new Error(`seed: neither ${PRIVATE} nor ${PUBLIC} exists`);
-  }
-  const raw = fs.readFileSync(source, 'utf8');
-  return JSON.parse(raw) as SeedDay[];
+  return seedDaysJson as unknown as SeedDay[];
 }
 
 function parseTime(timeStr: string | undefined): string | null {
@@ -345,13 +338,21 @@ export async function runSeedWithDeps(deps: SeedDeps): Promise<SeedSummary> {
     },
   };
 
-  await ingestLodgingRuns(ctx, days);
-  for (const d of days) {
-    for (const sub of d.subEvents ?? []) {
-      await ingestSubEvent(ctx, d, sub);
+  // Atomic seed: if any reservation fails (e.g. a timestamp that won't validate),
+  // delete the trip we just created so its FK-cascade removes every partial row —
+  // a failure must never leave a "Japan 2026" trip with zero/partial reservations.
+  try {
+    await ingestLodgingRuns(ctx, days);
+    for (const d of days) {
+      for (const sub of d.subEvents ?? []) {
+        await ingestSubEvent(ctx, d, sub);
+      }
     }
+    await ingestTransitPlaceholders(ctx, days);
+  } catch (err) {
+    await deps.deleteTrip(trip.id);
+    throw err;
   }
-  await ingestTransitPlaceholders(ctx, days);
 
   return {
     trip: trip.id,
@@ -379,10 +380,3 @@ export async function runSeed(): Promise<SeedSummary> {
   });
 }
 
-if (require.main === module) {
-  // CLI use: only meaningful via the smoke test, which provides its own in-memory deps.
-  console.error(
-    'scripts/seed.ts is meant to be imported. For Node-side smoke testing, run `pnpm smoke`.',
-  );
-  process.exit(1);
-}

@@ -10,7 +10,7 @@ const config: ExpoConfig = {
   ios: {
     bundleIdentifier: 'com.lizkhoo.tripos',
     supportsTablet: false,
-    deploymentTarget: '16.0',
+    deploymentTarget: '16.4',
     infoPlist: {
       NSPhotoLibraryUsageDescription:
         'trip-os reads screenshots and PDFs of your reservations to build your itinerary.',
@@ -35,6 +35,10 @@ const config: ExpoConfig = {
   ],
   experiments: {
     typedRoutes: true,
+  },
+  extra: {
+    // User-supplied iOS OAuth client id for Gmail. See README for setup.
+    googleClientId: process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '',
   },
 };
 

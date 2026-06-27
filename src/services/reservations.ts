@@ -1,5 +1,5 @@
 import { and, eq } from 'drizzle-orm';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { reservations } from '@/db/schema';
 import {
   ReservationInputSchema,
@@ -36,7 +36,7 @@ function toDomain(row: Row): Reservation {
 export async function createReservation(input: ReservationInput): Promise<Reservation> {
   const parsed = ReservationInputSchema.parse(input);
   const id = newUuid();
-  await db.insert(reservations).values({
+  await getDb().insert(reservations).values({
     id,
     tripId: parsed.trip_id,
     type: parsed.type,
@@ -52,7 +52,7 @@ export async function createReservation(input: ReservationInput): Promise<Reserv
     status: parsed.status ?? 'confirmed',
     details: JSON.stringify(parsed.details),
   });
-  const row = await db.select().from(reservations).where(eq(reservations.id, id)).get();
+  const row = await getDb().select().from(reservations).where(eq(reservations.id, id)).get();
   if (!row) throw new Error(`createReservation: row not found after insert (id=${id})`);
   return toDomain(row);
 }
@@ -78,14 +78,14 @@ export async function updateReservation(
   if (patch.status !== undefined) next.status = patch.status;
   if (patch.details !== undefined) next.details = JSON.stringify(patch.details);
   if (opts.manual) next.manuallyEditedAt = nowIso();
-  await db.update(reservations).set(next).where(eq(reservations.id, id));
-  const row = await db.select().from(reservations).where(eq(reservations.id, id)).get();
+  await getDb().update(reservations).set(next).where(eq(reservations.id, id));
+  const row = await getDb().select().from(reservations).where(eq(reservations.id, id)).get();
   if (!row) throw new Error(`updateReservation: row not found (id=${id})`);
   return toDomain(row);
 }
 
 export async function listReservationsForTrip(tripId: string): Promise<Reservation[]> {
-  const rows = await db.select().from(reservations).where(eq(reservations.tripId, tripId));
+  const rows = await getDb().select().from(reservations).where(eq(reservations.tripId, tripId));
   return rows.map(toDomain);
 }
 
@@ -144,11 +144,11 @@ function toInput(r: Reservation): ReservationInput {
 }
 
 export async function deleteReservation(id: string): Promise<void> {
-  await db.delete(reservations).where(eq(reservations.id, id));
+  await getDb().delete(reservations).where(eq(reservations.id, id));
 }
 
 export async function getReservation(id: string): Promise<Reservation | undefined> {
-  const row = await db.select().from(reservations).where(eq(reservations.id, id)).get();
+  const row = await getDb().select().from(reservations).where(eq(reservations.id, id)).get();
   return row ? toDomain(row) : undefined;
 }
 
@@ -156,7 +156,7 @@ export async function listReservationsBySource(
   tripId: string,
   source: Reservation['source'],
 ): Promise<Reservation[]> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(reservations)
     .where(and(eq(reservations.tripId, tripId), eq(reservations.source, source)));

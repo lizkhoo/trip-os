@@ -8,18 +8,36 @@ importers:
 
   .:
     dependencies:
+      '@formatjs/intl-datetimeformat':
+        specifier: ^7.4.9
+        version: 7.4.9
+      '@formatjs/intl-getcanonicallocales':
+        specifier: ^3.2.10
+        version: 3.2.10
+      '@formatjs/intl-locale':
+        specifier: ^5.3.9
+        version: 5.3.9
+      '@formatjs/intl-pluralrules':
+        specifier: ^6.3.10
+        version: 6.3.10
       '@gorhom/bottom-sheet':
         specifier: ^5.2.14
         version: 5.2.14(@types/react@19.1.17)(react-native-gesture-handler@2.31.2(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
       '@react-native-community/datetimepicker':
         specifier: 9.1.0
         version: 9.1.0(expo@56.0.4)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
+      '@react-native-community/slider':
+        specifier: ^5.2.0
+        version: 5.2.0
       drizzle-orm:
         specifier: ^0.45.2
         version: 0.45.2(@types/better-sqlite3@7.6.13)(better-sqlite3@12.10.0)(expo-sqlite@56.0.4(expo@56.0.4)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))
       expo:
         specifier: ~56.0.4
         version: 56.0.4(@babel/core@7.29.7)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.12)(expo-router@56.2.6)(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
+      expo-constants:
+        specifier: ~56.0.15
+        version: 56.0.15(expo@56.0.4)(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))
       expo-document-picker:
         specifier: ~56.0.4
         version: 56.0.4(expo@56.0.4)
@@ -84,6 +102,9 @@ importers:
       '@types/uuid':
         specifier: ^11.0.0
         version: 11.0.0
+      babel-plugin-inline-import:
+        specifier: ^3.0.0
+        version: 3.0.0
       better-sqlite3:
         specifier: ^12.10.0
         version: 12.10.0
@@ -1198,6 +1219,30 @@ packages:
     resolution: {integrity: sha512-4aQzz9vgxcNXFfo/iyNgDDYfsU5XGKKxWxZopw0cVotHiW+U8IJbIxMaxsINs6bHhtkG3StKNPcOrn3eBuxKPw==}
     hasBin: true
 
+  '@formatjs/bigdecimal@0.2.6':
+    resolution: {integrity: sha512-aPzKsGQOkQRHUEbyO/ZtYfr4EqaBQnSs6U4tzTla1xBnIdEHgY2GqEqso28UMwWRkzKqqTj5+/6BmuOsRkfn2A==}
+
+  '@formatjs/fast-memoize@3.1.6':
+    resolution: {integrity: sha512-H5aexk1Le7T9TPmscacZ+1pR6CTa2n1wq+HDVGXhH8TzUlQQpeXzZs91dRtmFHrbeNbjPFPfQujUqm7MHgVoXQ==}
+
+  '@formatjs/intl-datetimeformat@7.4.9':
+    resolution: {integrity: sha512-dpGGhYrAq+3X0ME9V161qCgQcaY1IGhKUR6y58mep53qd3sg86ai+WkjlLbP0Hr2TFpPU9Z+i4oCxh1RUvW6mA==}
+
+  '@formatjs/intl-getcanonicallocales@3.2.10':
+    resolution: {integrity: sha512-iH9faynSJ7EO8h7VgMfkjGBMUvmmalyio2dTqB2tSSi8UZuWWfHmeQ/RT+Ztl/SUdrN5tm0SO3218uLQIkCGXw==}
+
+  '@formatjs/intl-locale@5.3.9':
+    resolution: {integrity: sha512-h8xk+FFg0R9jZmX2r+75BglH5Bd++7pnCn5veN4Fv9a+E6TiYgD0QnYXbYOzOskLPKaTnFrUFkQ7OYJUasuONw==}
+
+  '@formatjs/intl-localematcher@0.8.10':
+    resolution: {integrity: sha512-P/IC3qws3jH+1fEs+o0RIFgXKRaQlFehjS5W0FPAqdo6hgzawLl+eD0q0JjheQ3XtoOe5n8WSYfX06KQZI/QJA==}
+
+  '@formatjs/intl-pluralrules@6.3.10':
+    resolution: {integrity: sha512-pMoqKYhsfz2ostOQsh/5e66EJPiYWzy4yO7k9zcBLfw0pgOf15TRDYaT6lPghqUe9gdEEfP74QL7u6gwomxCTg==}
+
+  '@formatjs/intl-supportedvaluesof@2.3.8':
+    resolution: {integrity: sha512-webY7Ylc4CRRgxXFxZ4yRIr+9SKZyMLh+Hrsim4vG3HKSpD+T7d9XXvTdd6UDILyXf7BsqAa8l5/Nn2eENWCqw==}
+
   '@gorhom/bottom-sheet@5.2.14':
     resolution: {integrity: sha512-uLQFlDjp9z+jrOFcMSEldPqL5JdaXL3vXOh+juhwoNvXgTsEorJLjHTugXu+YccAG/0KJnShzKCrb71MHBsvJg==}
     peerDependencies:
@@ -1562,6 +1607,9 @@ packages:
         optional: true
       react-native-windows:
         optional: true
+
+  '@react-native-community/slider@5.2.0':
+    resolution: {integrity: sha512-484sH8aWEaSjxaZ7HT3YZ8CKDcNes2synko1vdEz5DFEdvKAduxKJTj22L/qBMD7rtIkfbX69DMzWDAGbOAV6w==}
 
   '@react-native-masked-view/masked-view@0.3.2':
     resolution: {integrity: sha512-XwuQoW7/GEgWRMovOQtX3A4PrXhyaZm0lVUiY8qJDvdngjLms9Cpdck6SmGAUNqQwcj2EadHC1HwL0bEyoa/SQ==}
@@ -2035,6 +2083,9 @@ packages:
 
   await-lock@2.2.2:
     resolution: {integrity: sha512-aDczADvlvTGajTDjcjpJMqRkOF6Qdz3YbPZm/PyW6tKPkx2hlYBzxMhEywM/tU72HrVZjgl5VCdRuMlA7pZ8Gw==}
+
+  babel-plugin-inline-import@3.0.0:
+    resolution: {integrity: sha512-thnykl4FMb8QjMjVCuZoUmAM7r2mnTn5qJwrryCvDv6rugbJlTHZMctdjDtEgD0WBAXJOLJSGXN3loooEwx7UQ==}
 
   babel-plugin-polyfill-corejs2@0.4.17:
     resolution: {integrity: sha512-aTyf30K/rqAsNwN76zYrdtx8obu0E4KoUME29B1xj+B3WxgvWkp943vYQ+z8Mv3lw9xHXMHpvSPOBxzAkIa94w==}
@@ -3891,6 +3942,9 @@ packages:
     resolution: {integrity: sha512-ak9Qy5Q7jYb2Wwcey5Fpvg2KoAc/ZIhLSLOSBmRmygPsGwkVVt0fZa0qrtMz+m6tJTAHfZQ8FnmB4MG4LWy7/w==}
     engines: {node: '>=8'}
 
+  path-extra@1.0.3:
+    resolution: {integrity: sha512-vYm3+GCkjUlT1rDvZnDVhNLXIRvwFPaN8ebHAFcuMJM/H0RBOPD7JrcldiNLd9AS3dhAyUHLa4Hny5wp1A+Ffw==}
+
   path-key@3.1.1:
     resolution: {integrity: sha512-ojmeN0qd+y0jszEtoY48r0Peq5dwMEkIlCOu6Q5f41lfkswXuKtYrhgoTpLnyIcHm24Uhqx+5Tqm2InSwLhE6Q==}
     engines: {node: '>=8'}
@@ -4256,6 +4310,9 @@ packages:
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
+
+  require-resolve@0.0.2:
+    resolution: {integrity: sha512-eafQVaxdQsWUB8HybwognkdcIdKdQdQBwTxH48FuE6WI0owZGKp63QYr1MRp73PoX0AcyB7MDapZThYUY8FD0A==}
 
   resolve-from@4.0.0:
     resolution: {integrity: sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g==}
@@ -4809,6 +4866,9 @@ packages:
         optional: true
       utf-8-validate:
         optional: true
+
+  x-path@0.0.2:
+    resolution: {integrity: sha512-zQ4WFI0XfJN1uEkkrB19Y4TuXOlHqKSxUJo0Yt+axPjRm8tCG6SJ6+Wo3/+Kjg4c2c8IvBXuJ0uYoshxNn4qMw==}
 
   xcode@3.0.1:
     resolution: {integrity: sha512-kCz5k7J7XbJtjABOvkc5lJmkiDh8VhjVCGNiqdKCscmVpdVUpEAyXv1xmCLkQJ5dsHqx3IPO4XW+NTDhU/fatA==}
@@ -6028,6 +6088,35 @@ snapshots:
       chalk: 4.1.2
       js-yaml: 4.1.1
 
+  '@formatjs/bigdecimal@0.2.6': {}
+
+  '@formatjs/fast-memoize@3.1.6': {}
+
+  '@formatjs/intl-datetimeformat@7.4.9':
+    dependencies:
+      '@formatjs/bigdecimal': 0.2.6
+      '@formatjs/intl-localematcher': 0.8.10
+
+  '@formatjs/intl-getcanonicallocales@3.2.10': {}
+
+  '@formatjs/intl-locale@5.3.9':
+    dependencies:
+      '@formatjs/intl-getcanonicallocales': 3.2.10
+      '@formatjs/intl-supportedvaluesof': 2.3.8
+
+  '@formatjs/intl-localematcher@0.8.10':
+    dependencies:
+      '@formatjs/fast-memoize': 3.1.6
+
+  '@formatjs/intl-pluralrules@6.3.10':
+    dependencies:
+      '@formatjs/bigdecimal': 0.2.6
+      '@formatjs/intl-localematcher': 0.8.10
+
+  '@formatjs/intl-supportedvaluesof@2.3.8':
+    dependencies:
+      '@formatjs/fast-memoize': 3.1.6
+
   '@gorhom/bottom-sheet@5.2.14(@types/react@19.1.17)(react-native-gesture-handler@2.31.2(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native-reanimated@4.3.1(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)':
     dependencies:
       '@gorhom/portal': 1.0.14(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)
@@ -6330,6 +6419,8 @@ snapshots:
     optionalDependencies:
       expo: 56.0.4(@babel/core@7.29.7)(@expo/dom-webview@56.0.5)(@expo/metro-runtime@56.0.12)(expo-router@56.2.6)(react-native-worklets@0.8.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3))(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)(typescript@5.9.3)
 
+  '@react-native-community/slider@5.2.0': {}
+
   '@react-native-masked-view/masked-view@0.3.2(react-native@0.85.3(@babel/core@7.29.7)(@react-native/metro-config@0.85.3(@babel/core@7.29.7))(@types/react@19.1.17)(react@19.2.3))(react@19.2.3)':
     dependencies:
       react: 19.2.3
@@ -6459,9 +6550,7 @@ snapshots:
       metro-runtime: 0.84.4
     transitivePeerDependencies:
       - '@babel/core'
-      - bufferutil
       - supports-color
-      - utf-8-validate
 
   '@react-native/normalize-colors@0.85.3': {}
 
@@ -6870,6 +6959,10 @@ snapshots:
       possible-typed-array-names: 1.1.0
 
   await-lock@2.2.2: {}
+
+  babel-plugin-inline-import@3.0.0:
+    dependencies:
+      require-resolve: 0.0.2
 
   babel-plugin-polyfill-corejs2@0.4.17(@babel/core@7.29.7):
     dependencies:
@@ -8962,6 +9055,8 @@ snapshots:
 
   path-exists@4.0.0: {}
 
+  path-extra@1.0.3: {}
+
   path-key@3.1.1: {}
 
   path-parse@1.0.7: {}
@@ -9369,6 +9464,10 @@ snapshots:
       jsesc: 3.1.0
 
   require-directory@2.1.1: {}
+
+  require-resolve@0.0.2:
+    dependencies:
+      x-path: 0.0.2
 
   resolve-from@4.0.0: {}
 
@@ -10010,6 +10109,10 @@ snapshots:
   ws@7.5.11: {}
 
   ws@8.21.0: {}
+
+  x-path@0.0.2:
+    dependencies:
+      path-extra: 1.0.3
 
   xcode@3.0.1:
     dependencies:

@@ -1,3 +1,6 @@
+// Must be first: installs full Intl locale + IANA timezone data for Hermes
+// before any timezone-aware code (src/lib/time.ts) runs. See the module header.
+import '@/lib/intl-polyfill';
 import '../global.css';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
@@ -5,11 +8,14 @@ import { View, Text, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
-import { db } from '@/db/client';
+import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
+import { getDb } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
 
 export default function RootLayout() {
-  const { success, error } = useMigrations(db, migrations);
+  // In the app, getDb() returns the expo-sqlite-backed client that useMigrations
+  // expects; the cast re-narrows our backend-agnostic Db port type to it.
+  const { success, error } = useMigrations(getDb() as unknown as ExpoSQLiteDatabase, migrations);
 
   useEffect(() => {
     if (error) console.error('Migration failed:', error);

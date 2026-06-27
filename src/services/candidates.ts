@@ -1,5 +1,5 @@
 import { and, eq, gte } from 'drizzle-orm';
-import { db } from '@/db/client';
+import { getDb } from '@/db/client';
 import { attachments, extractionCandidates } from '@/db/schema';
 import {
   ExtractionCandidateInputSchema,
@@ -32,7 +32,7 @@ export async function createCandidate(
 ): Promise<ExtractionCandidate> {
   const parsed = ExtractionCandidateInputSchema.parse(input);
   const id = newUuid();
-  await db.insert(extractionCandidates).values({
+  await getDb().insert(extractionCandidates).values({
     id,
     tripId: parsed.trip_id ?? null,
     source: parsed.source,
@@ -44,7 +44,7 @@ export async function createCandidate(
     status: parsed.status ?? 'pending',
     mergedIntoReservationId: parsed.merged_into_reservation_id ?? null,
   });
-  const row = await db
+  const row = await getDb()
     .select()
     .from(extractionCandidates)
     .where(eq(extractionCandidates.id, id))
@@ -54,7 +54,7 @@ export async function createCandidate(
 }
 
 export async function listPendingCandidates(): Promise<ExtractionCandidate[]> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(extractionCandidates)
     .where(eq(extractionCandidates.status, 'pending'));
@@ -62,7 +62,7 @@ export async function listPendingCandidates(): Promise<ExtractionCandidate[]> {
 }
 
 export async function getCandidate(id: string): Promise<ExtractionCandidate | undefined> {
-  const row = await db
+  const row = await getDb()
     .select()
     .from(extractionCandidates)
     .where(eq(extractionCandidates.id, id))
@@ -73,6 +73,11 @@ export async function getCandidate(id: string): Promise<ExtractionCandidate | un
 /**
  * Accept a pending candidate: create the reservation, mark the candidate
  * accepted, attach any pending attachments tied to the same source_ref.
+ *
+ * The candidate's row carries the auto-assigned trip_id (null if it needs the
+ * user to pick one); we inject it into the proposal here before handing off to
+ * createReservation. `edits` may override anything — including trip_id when
+ * the user is assigning a trip from the review queue.
  */
 export async function acceptCandidate(
   id: string,
@@ -83,12 +88,15 @@ export async function acceptCandidate(
   if (candidate.status !== 'pending') {
     throw new Error(`acceptCandidate: candidate is ${candidate.status}, not pending`);
   }
-  const merged: ReservationInput = {
+  const merged = {
     ...candidate.proposed_reservation,
+    trip_id: candidate.trip_id,
     ...(edits ?? {}),
   } as ReservationInput;
+  // createReservation Zod-parses this — a missing trip_id (user didn't assign
+  // a trip in the review queue) will surface as a parse failure there.
   const reservation = await createReservation(merged);
-  await db
+  await getDb()
     .update(extractionCandidates)
     .set({
       status: 'accepted',
@@ -96,7 +104,7 @@ export async function acceptCandidate(
     })
     .where(eq(extractionCandidates.id, id));
   if (candidate.source_ref) {
-    await db
+    await getDb()
       .update(attachments)
       .set({ reservationId: reservation.id })
       .where(eq(attachments.extractionRunId, candidate.source_ref));
@@ -107,7 +115,7 @@ export async function acceptCandidate(
 }
 
 export async function rejectCandidate(id: string): Promise<void> {
-  await db
+  await getDb()
     .update(extractionCandidates)
     .set({ status: 'rejected' })
     .where(eq(extractionCandidates.id, id));
@@ -119,7 +127,7 @@ export async function rejectCandidate(id: string): Promise<void> {
  * the user to assign a trip first.
  */
 export async function autoPromoteAboveThreshold(threshold: number): Promise<number> {
-  const rows = await db
+  const rows = await getDb()
     .select()
     .from(extractionCandidates)
     .where(
@@ -132,11 +140,14 @@ export async function autoPromoteAboveThreshold(threshold: number): Promise<numb
   for (const row of rows) {
     const cand = toDomain(row);
     if (!cand.trip_id) continue;
-    const proposed = { ...cand.proposed_reservation, trip_id: cand.trip_id } as ReservationInput;
+    const proposed: ReservationInput = {
+      ...cand.proposed_reservation,
+      trip_id: cand.trip_id,
+    } as ReservationInput;
     const dup = await findDuplicateReservation(proposed);
     if (dup) {
       // Mark as merged, leave the existing reservation alone unless it was never manually edited.
-      await db
+      await getDb()
         .update(extractionCandidates)
         .set({ status: 'merged_into', mergedIntoReservationId: dup.id })
         .where(eq(extractionCandidates.id, cand.id));

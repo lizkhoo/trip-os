@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { CANDIDATE_STATUSES, RESERVATION_SOURCES } from '@/db/schema';
-import { ReservationInputSchema } from './reservation';
+import { ReservationProposalSchema } from './reservation';
 
 export const ExtractionCandidateSchema = z.object({
   id: z.string().uuid(),
@@ -9,7 +9,7 @@ export const ExtractionCandidateSchema = z.object({
   source_ref: z.string().optional().nullable(),
   raw_text: z.string().optional().nullable(),
   claude_response: z.string().optional().nullable(),
-  proposed_reservation: ReservationInputSchema,
+  proposed_reservation: ReservationProposalSchema,
   confidence: z.number().min(0).max(1),
   status: z.enum(CANDIDATE_STATUSES).default('pending'),
   merged_into_reservation_id: z.string().uuid().optional().nullable(),

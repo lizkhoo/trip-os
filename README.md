@@ -38,7 +38,23 @@ The dev surface lives at `/dev` (the root route redirects there until Agent 4 sh
 
 ## Anthropic API key
 
-The Claude extraction client is part of Agent 2. When that lands, paste your API key into Settings inside the app — it lives in iOS Keychain via `expo-secure-store`. Do not put it in `.env` files; trip-os has no server, all calls happen on-device, and `.env` files are ignored to prevent accidental commit.
+Paste your Anthropic API key into Settings inside the app — it lives in iOS Keychain via `expo-secure-store`. Do not put your **Anthropic API key** in `.env` files; it's an actual secret that lets anyone bill against your account, and `.env` files are easy to leak. The Google iOS OAuth client id (below) is different: it's public-by-design and fine to keep in `.env` for local dev.
+
+## Gmail OAuth
+
+trip-os connects to Gmail directly from the device using PKCE — no server, no shared secret. You need your own iOS OAuth client id:
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos` (or whatever you ship under).
+2. On the same credential, register `trip-os://oauthredirect` as the iOS redirect URI. (Google's iOS OAuth flow accepts arbitrary custom-scheme redirects — the `trip-os` scheme is declared by `app.config.ts` and routed by Expo.)
+3. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`).
+4. Set it in your shell before `pnpm ios`:
+   ```bash
+   export TRIPOS_GOOGLE_CLIENT_ID="1234567890-abc.apps.googleusercontent.com"
+   pnpm ios
+   ```
+   The client id is public-by-design (Google's iOS OAuth flow has no client secret), so it's also fine to keep it in your local `.env` and source it before launch.
+
+The Gmail scope is `gmail.readonly`. Tokens land in iOS Keychain — `expo-secure-store` keeps them out of normal app storage and out of backups. Refresh is handled internally by `src/services/gmail.ts` on 401.
 
 ## Database
 

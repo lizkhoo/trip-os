@@ -46,13 +46,21 @@ export function dateInZone(iso: string, timeZone: string): string {
  * Useful when assembling an ISO string from a local date+time + IANA zone.
  */
 export function offsetForZone(date: Date, timeZone: string): string {
-  const utc = new Date(date.toLocaleString('en-US', { timeZone: 'UTC' }));
-  const local = new Date(date.toLocaleString('en-US', { timeZone }));
-  const diffMin = Math.round((local.getTime() - utc.getTime()) / 60000);
-  const sign = diffMin >= 0 ? '+' : '-';
-  const abs = Math.abs(diffMin);
-  const hh = String(Math.floor(abs / 60)).padStart(2, '0');
-  const mm = String(abs % 60).padStart(2, '0');
+  // Derive the offset from the formatted zone name rather than diffing two
+  // `toLocaleString` round-trips: the latter is unreliable on Hermes (it depends
+  // on Date being able to re-parse a localized string). `longOffset` yields
+  // "GMT+09:00" / "GMT-7" / "GMT" (== UTC). Requires the Intl tz polyfill on
+  // Hermes (see src/lib/intl-polyfill.ts); on Node's full ICU it works as-is.
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone,
+    timeZoneName: 'longOffset',
+  }).formatToParts(date);
+  const tzName = parts.find((p) => p.type === 'timeZoneName')?.value ?? 'GMT';
+  const m = tzName.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/);
+  if (!m) return '+00:00';
+  const sign = m[1];
+  const hh = (m[2] ?? '0').padStart(2, '0');
+  const mm = (m[3] ?? '00').padStart(2, '0');
   return `${sign}${hh}:${mm}`;
 }
 
