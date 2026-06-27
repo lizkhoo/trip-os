@@ -16,6 +16,10 @@
     "seed:export": "tsx scripts/export-itinerary.ts"
   },
   "dependencies": {
+    "@formatjs/intl-datetimeformat": "^7.4.9",
+    "@formatjs/intl-getcanonicallocales": "^3.2.10",
+    "@formatjs/intl-locale": "^5.3.9",
+    "@formatjs/intl-pluralrules": "^6.3.10",
     "@gorhom/bottom-sheet": "^5.2.14",
     "@react-native-community/datetimepicker": "9.1.0",
     "@react-native-community/slider": "^5.2.0",

@@ -1,3 +1,6 @@
+// Must be first: installs full Intl locale + IANA timezone data for Hermes
+// before any timezone-aware code (src/lib/time.ts) runs. See the module header.
+import '@/lib/intl-polyfill';
 import '../global.css';
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';

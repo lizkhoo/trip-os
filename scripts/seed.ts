@@ -338,13 +338,21 @@ export async function runSeedWithDeps(deps: SeedDeps): Promise<SeedSummary> {
     },
   };
 
-  await ingestLodgingRuns(ctx, days);
-  for (const d of days) {
-    for (const sub of d.subEvents ?? []) {
-      await ingestSubEvent(ctx, d, sub);
+  // Atomic seed: if any reservation fails (e.g. a timestamp that won't validate),
+  // delete the trip we just created so its FK-cascade removes every partial row —
+  // a failure must never leave a "Japan 2026" trip with zero/partial reservations.
+  try {
+    await ingestLodgingRuns(ctx, days);
+    for (const d of days) {
+      for (const sub of d.subEvents ?? []) {
+        await ingestSubEvent(ctx, d, sub);
+      }
     }
+    await ingestTransitPlaceholders(ctx, days);
+  } catch (err) {
+    await deps.deleteTrip(trip.id);
+    throw err;
   }
-  await ingestTransitPlaceholders(ctx, days);
 
   return {
     trip: trip.id,
