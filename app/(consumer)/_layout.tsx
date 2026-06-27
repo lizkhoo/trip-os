@@ -1,6 +1,9 @@
 import { Stack } from 'expo-router';
+import { headerScreenOptions } from '@/lib/nav';
 
-// Consumer surface is empty in Foundation. Agent 4 will replace this with a tab navigator.
+// Native large-title headers (Georgia serif) give safe-area-correct chrome and an
+// automatic back button for free. Each screen sets its own `title` / header
+// actions via a <Stack.Screen> element.
 export default function ConsumerLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={headerScreenOptions} />;
 }

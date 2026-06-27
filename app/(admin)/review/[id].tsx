@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert, ActivityIndicator } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Button,
   Card,
@@ -104,8 +104,12 @@ export default function ReviewDetailScreen() {
   const isPending = candidate.status === 'pending';
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4" contentContainerStyle={{ paddingBottom: 48 }}>
-      <Text className="font-serif text-3xl text-ink mt-4 mb-4">Review</Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: 'Review' }} />
 
       <Card className="mb-4">
         <View className="flex-row items-center justify-between mb-2">

@@ -10,9 +10,8 @@
  *   - a confidence chip on lower-confidence (non-manual) reservations.
  */
 import { useCallback, useState } from 'react';
-import { View, Text, ActivityIndicator } from 'react-native';
-import { Link, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, Pressable, ActivityIndicator } from 'react-native';
+import { Link, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import {
   Button,
   Card,
@@ -96,20 +95,22 @@ export default function TripDetailScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView className="flex-1 bg-paper items-center justify-center">
+      <View className="flex-1 bg-paper items-center justify-center">
+        <Stack.Screen options={{ title: 'Trip' }} />
         <ActivityIndicator color="#6b6058" />
-      </SafeAreaView>
+      </View>
     );
   }
 
   if (!loaded) {
     return (
-      <SafeAreaView className="flex-1 bg-paper">
+      <View className="flex-1 bg-paper">
+        <Stack.Screen options={{ title: 'Trip' }} />
         <EmptyState
           title="Trip not found"
           action={<Button title="Back" onPress={() => router.back()} />}
         />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -118,17 +119,22 @@ export default function TripDetailScreen() {
   const isEmpty = days.every((d) => d.reservations.length === 0);
 
   return (
-    <SafeAreaView className="flex-1 bg-paper" edges={['bottom']}>
+    <>
+      <Stack.Screen
+        options={{
+          title: trip.title,
+          headerRight: () => (
+            <Pressable onPress={() => router.push('/review')} hitSlop={8}>
+              <Text style={{ color: '#b04a2a', fontSize: 17 }}>Review</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <PullToRefresh
         onRefresh={refresh}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
       >
-        <View className="flex-row items-baseline justify-between mb-2">
-          <Text className="font-serif text-4xl text-ink">{trip.title}</Text>
-          <Link href="/review" asChild>
-            <Button title="Review" variant="secondary" size="sm" />
-          </Link>
-        </View>
         <Text className="text-xs uppercase tracking-widest text-ink-muted mb-4">
           {trip.start_date} – {trip.end_date} · {homeTimezone}
         </Text>
@@ -171,7 +177,7 @@ export default function TripDetailScreen() {
           ))
         )}
       </PullToRefresh>
-    </SafeAreaView>
+    </>
   );
 }
 

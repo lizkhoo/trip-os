@@ -6,8 +6,8 @@
  * src/lib/timezones.ts, then routes to the new trip's detail timeline.
  */
 import { useCallback, useState } from 'react';
-import { ScrollView, Text, View, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
+import { ScrollView, View, Alert } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
 import { Button, Input, Select, DateTimePicker } from '@/components/ui';
 import { TIMEZONE_OPTIONS } from '@/lib/timezones';
 import { createTrip } from '@/services/trips';
@@ -62,8 +62,12 @@ export default function TripCreateScreen() {
   }, [title, timezone, startDate, endDate, router]);
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4" contentContainerStyle={{ paddingBottom: 48 }}>
-      <Text className="font-serif text-3xl text-ink mt-4 mb-4">New trip</Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: 'New trip' }} />
 
       <View className="gap-4">
         <Input label="Title" value={title} onChangeText={setTitle} placeholder="Japan 2026" />

@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
+import { Stack } from 'expo-router';
+import { HeaderBack } from '@/components/HeaderBack';
 import Slider from '@react-native-community/slider';
 import { eq } from 'drizzle-orm';
 import { Button, Card, Input } from '@/components/ui';
@@ -133,8 +135,12 @@ export default function SettingsScreen() {
   );
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4">
-      <Text className="font-serif text-3xl text-ink mt-4 mb-2">Settings</Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: 'Settings', headerLeft: () => <HeaderBack /> }} />
 
       <Card className="mb-4">
         <Text className="text-xs uppercase tracking-widest text-ink-muted mb-2">

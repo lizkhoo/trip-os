@@ -1,7 +1,6 @@
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable, Image } from 'react-native';
-import { useFocusEffect, useRouter, Link } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useFocusEffect, useRouter, Link, Stack } from 'expo-router';
 import { Button, Card, EmptyState, PullToRefresh } from '@/components/ui';
 import { listTrips } from '@/services/trips';
 import type { Trip } from '@/domain/trip';
@@ -38,18 +37,22 @@ export default function TripsIndex() {
   }, [refresh, syncGmail]);
 
   return (
-    <SafeAreaView className="flex-1 bg-paper" edges={['bottom']}>
+    <>
+      <Stack.Screen
+        options={{
+          title: 'Trips',
+          headerRight: () => (
+            <Pressable onPress={() => router.push('/trips/new')} hitSlop={8}>
+              <Text style={{ color: '#b04a2a', fontSize: 17 }}>+ New</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <PullToRefresh
         onRefresh={onRefresh}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
       >
-        <View className="flex-row items-baseline justify-between mb-4">
-          <Text className="font-serif text-4xl text-ink">Trips</Text>
-          <Link href="/trips/new" asChild>
-            <Button title="+ New" variant="secondary" size="sm" />
-          </Link>
-        </View>
-
         {trips.length === 0 ? (
           <EmptyState
             title="No trips yet"
@@ -74,7 +77,7 @@ export default function TripsIndex() {
           </Link>
         </View>
       </PullToRefresh>
-    </SafeAreaView>
+    </>
   );
 }
 

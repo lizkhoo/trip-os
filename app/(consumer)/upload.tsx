@@ -12,7 +12,7 @@ import { useCallback, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
-import { useRouter } from 'expo-router';
+import { Stack, useRouter } from 'expo-router';
 import { Button } from '@/components/ui';
 import { runUploadSync, type UploadSyncResult } from '@/services/syncUpload';
 
@@ -73,8 +73,12 @@ export default function UploadScreen() {
   const busy = phase === 'running';
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4" contentContainerStyle={{ paddingBottom: 48 }}>
-      <Text className="font-serif text-3xl text-ink mt-4 mb-2">Import a booking</Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: 'Import a booking' }} />
       <Text className="text-ink/70 mb-6">
         Add a screenshot or PDF of a confirmation. We&apos;ll read it and add it to your trip.
       </Text>

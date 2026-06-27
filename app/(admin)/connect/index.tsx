@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
+import { Stack } from 'expo-router';
+import { HeaderBack } from '@/components/HeaderBack';
 import Constants from 'expo-constants';
 import { authorize, refresh, type AuthorizeResult } from 'react-native-app-auth';
 import { Button, Card, EmptyState } from '@/components/ui';
@@ -104,8 +106,12 @@ export default function ConnectScreen() {
     : null;
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4">
-      <Text className="font-serif text-3xl text-ink mt-4 mb-2">Connect Gmail</Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: 'Connect Gmail', headerLeft: () => <HeaderBack /> }} />
       <Text className="text-sm text-ink-muted mb-4">
         OAuth runs in a system browser — your password never touches this app. Tokens are stored in
         the iOS Keychain.

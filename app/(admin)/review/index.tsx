@@ -10,8 +10,8 @@
  */
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
-import { Link, useFocusEffect } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Link, Stack, useFocusEffect } from 'expo-router';
+import { HeaderBack } from '@/components/HeaderBack';
 import { eq } from 'drizzle-orm';
 import { Card, ConfidenceChip, EmptyState, PullToRefresh, ReservationBadge } from '@/components/ui';
 import { listPendingCandidates } from '@/services/candidates';
@@ -58,13 +58,13 @@ export default function ReviewQueueScreen() {
   );
 
   return (
-    <SafeAreaView className="flex-1 bg-paper" edges={['bottom']}>
+    <>
+      <Stack.Screen options={{ title: 'Review', headerLeft: () => <HeaderBack /> }} />
       <PullToRefresh
         onRefresh={refresh}
+        contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
       >
-        <Text className="font-serif text-4xl text-ink mb-4">Review</Text>
-
         {pending.length === 0 ? (
           <EmptyState
             title="Nothing to review"
@@ -85,7 +85,7 @@ export default function ReviewQueueScreen() {
           </View>
         ) : null}
       </PullToRefresh>
-    </SafeAreaView>
+    </>
   );
 }
 

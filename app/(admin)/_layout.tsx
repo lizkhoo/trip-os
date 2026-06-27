@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
+import { headerScreenOptions } from '@/lib/nav';
 
-// Admin surface is empty in Foundation. Agents 2 & 3 will populate /connect, /upload, /review.
+// Native large-title headers (Georgia serif) — see app/(consumer)/_layout.tsx.
 export default function AdminLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return <Stack screenOptions={headerScreenOptions} />;
 }

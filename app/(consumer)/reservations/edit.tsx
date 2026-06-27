@@ -11,8 +11,8 @@
  * REAL createReservation with source 'manual'; delete uses deleteReservation.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, View, Alert } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ScrollView, View, Alert } from 'react-native';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { Button, Input, Select, DateTimePicker, type SelectOption } from '@/components/ui';
 import {
   createReservation,
@@ -181,10 +181,12 @@ export default function ReservationEditScreen() {
   }, [isEditing, id, router]);
 
   return (
-    <ScrollView className="flex-1 bg-paper px-4" contentContainerStyle={{ paddingBottom: 48 }}>
-      <Text className="font-serif text-3xl text-ink mt-4 mb-4">
-        {isEditing ? 'Edit reservation' : 'Add reservation'}
-      </Text>
+    <ScrollView
+      className="flex-1 bg-paper px-4"
+      contentInsetAdjustmentBehavior="automatic"
+      contentContainerStyle={{ paddingTop: 8, paddingBottom: 48 }}
+    >
+      <Stack.Screen options={{ title: isEditing ? 'Edit reservation' : 'Add reservation' }} />
 
       <View className="gap-4">
         <Select<ReservationType>
