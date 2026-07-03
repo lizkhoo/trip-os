@@ -1,17 +1,28 @@
 /**
- * OCR boundary. Production `ocrImage` will call the native Apple Vision module
- * (VNRecognizeTextRequest) to pull text out of a screenshot/PDF page; that
- * native bridge isn't wired up yet, so the production path throws a clear error
- * if invoked unmocked. The e2e harness injects deterministic OCR text through
- * the test hatch (mirrors extract.ts __setExtractForTest exactly).
+ * OCR boundary. Production `ocrImage` calls the local Apple Vision expo module
+ * (modules/AppleVision — VNRecognizeTextRequest, with PDFKit rasterization for
+ * PDFs) to pull text out of a screenshot/PDF. The e2e harness injects
+ * deterministic OCR text through the test hatch (mirrors extract.ts
+ * __setExtractForTest exactly).
  */
 
-export async function ocrImage(_uri: string): Promise<string> {
-  // The native Apple Vision module is not available in this environment yet.
-  // When it lands, replace this with the native bridge call. Throwing (rather
-  // than returning '') keeps a missing module from silently producing empty
-  // extractions.
-  throw new Error('OCR native module not available');
+// Deferred so importing this module under Node (e2e runner / smoke) never loads
+// expo-modules-core's native bridge. Mirrors storage.ts / secrets.ts deferral.
+async function loadAppleVision(): Promise<typeof import('../../modules/AppleVision')> {
+  try {
+    return await import('../../modules/AppleVision');
+  } catch (err) {
+    throw new Error(
+      'OCR native module not available — run a development build (pnpm ios) so ' +
+        `the AppleVision module is compiled in. (${err instanceof Error ? err.message : String(err)})`,
+    );
+  }
+}
+
+export async function ocrImage(uri: string): Promise<string> {
+  const vision = await loadAppleVision();
+  const result = await vision.recognizeText(uri);
+  return result.text;
 }
 
 // --- Test hatch -----------------------------------------------------------------
