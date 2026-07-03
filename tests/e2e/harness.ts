@@ -27,6 +27,7 @@ import {
 import { __setSecretsForTest, type GmailTokens } from '@/services/secrets';
 import { __setStorageForTest, type AttachmentKind } from '@/services/storage';
 import { __setOcrForTest } from '@/services/ocr';
+import { __setGeocodeForTest, type GeocodeHit } from '@/services/geocode';
 
 export interface Harness {
   /** Raw better-sqlite3 handle, for direct SQL assertions if a test needs them. */
@@ -74,6 +75,7 @@ export function createHarness(): Harness {
       __setSecretsForTest(null);
       __setStorageForTest(null);
       __setOcrForTest(null);
+      __setGeocodeForTest(null);
       raw.close();
     },
   };
@@ -190,6 +192,17 @@ export function installMockOcr(text: string | Map<string, string>): void {
     const t = text.get(uri);
     if (t === undefined) throw new Error(`mock ocr: no text for ${uri}`);
     return t;
+  });
+}
+
+/**
+ * Install a deterministic geocoder via the geocode test hatch. Keyed by
+ * geocode_query; queries absent from the map resolve to null (geocoder miss),
+ * matching the real CLGeocoder behavior for unresolvable strings.
+ */
+export function installMockGeocode(byQuery: Map<string, GeocodeHit>): void {
+  __setGeocodeForTest(async (query: string): Promise<GeocodeHit | null> => {
+    return byQuery.get(query) ?? null;
   });
 }
 

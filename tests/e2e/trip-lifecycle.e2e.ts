@@ -18,6 +18,8 @@
  */
 import { createTrip, getTrip, deleteTrip } from '@/services/trips';
 import { findOrCreateLocation } from '@/services/locations';
+import { geocodeMissingLocations } from '@/services/geocode';
+import { installMockGeocode } from './harness';
 import {
   createReservation,
   listReservationsForTrip,
@@ -180,9 +182,10 @@ export const test: E2eTest = async ({ assert, assertEqual }) => {
   // Shinkansen transit, and the Kyoto check-in lodging all intersect 03-16.
   const d16 = dayByDate.get('2026-03-16');
   assertEqual(d16?.reservations.length, 3, '03-16 has Tokyo checkout, transit, and Kyoto check-in');
-  // deriveCity picks the first lodging on the day; both Tokyo (checkout) and
-  // Kyoto (check-in) are present, so assert the city is one of the two.
-  assert(d16?.city === 'Tokyo' || d16?.city === 'Kyoto', '03-16 city is a real lodging city');
+  // deriveCity prefers the lodging covering the *night* of the day (check-in ≤
+  // day < check-out), so a changeover day resolves deterministically to where
+  // you sleep: Kyoto, not the Tokyo checkout.
+  assertEqual(d16?.city, 'Kyoto', '03-16 city is where you sleep (Kyoto check-in wins the changeover)');
 
   // Day 4: only the Kyoto ryokan + the Fushimi activity → Kyoto.
   const d17 = dayByDate.get('2026-03-17');
@@ -227,6 +230,35 @@ export const test: E2eTest = async ({ assert, assertEqual }) => {
   assert(!!hop, 'transit pair Tokyo hotel → Kyoto ryokan derived for 03-16');
   assertEqual(hop?.fromQuery, 'Park Hotel Tokyo, Tokyo, Japan', 'transit fromQuery is the hotel geocode');
   assertEqual(hop?.toQuery, 'Kyoto Ryokan, Kyoto, Japan', 'transit toQuery is the ryokan geocode');
+
+  // --- Geocode backfill: REAL geocodeMissingLocations through the hatch -------
+  // The map screen runs this on open. Mock CLGeocoder resolves three of the five
+  // locations; the other two miss (stay lat/lng-null → map's fallback list).
+  installMockGeocode(
+    new Map([
+      ['Park Hotel Tokyo, Tokyo, Japan', { lat: 35.6641, lng: 139.7594 }],
+      ['Kyoto Ryokan, Kyoto, Japan', { lat: 35.0116, lng: 135.7681 }],
+      ['Haneda Airport, Tokyo, Japan', { lat: 35.5494, lng: 139.7798 }],
+    ]),
+  );
+  const backfill = await geocodeMissingLocations();
+  assertEqual(backfill.attempted, 5, 'geocode backfill attempted all five lat/lng-null locations');
+  assertEqual(backfill.resolved, 3, 'geocode backfill resolved the three mocked queries');
+  const hotelAfter = await findOrCreateLocation({
+    name: 'Park Hotel Tokyo',
+    geocode_query: 'Park Hotel Tokyo, Tokyo, Japan',
+    timezone: 'Asia/Tokyo',
+  });
+  assertEqual(hotelAfter.lat, 35.6641, 'geocoded lat persisted on the location row');
+  assertEqual(hotelAfter.lng, 139.7594, 'geocoded lng persisted on the location row');
+  const inariAfter = await findOrCreateLocation({
+    name: 'Fushimi Inari Taisha',
+    geocode_query: 'Fushimi Inari Taisha, Kyoto, Japan',
+    timezone: 'Asia/Tokyo',
+  });
+  assertEqual(inariAfter.lat, null, 'unresolvable location stays lat-null (map fallback list)');
+  const backfillAgain = await geocodeMissingLocations();
+  assertEqual(backfillAgain.attempted, 2, 'second backfill only retries the still-null locations');
 
   // --- Lifecycle teardown: delete cascades the trip away ---------------------
   await deleteTrip(trip.id);

@@ -134,6 +134,11 @@ export function enumerateDays(startDate: string, endDate: string): string[] {
  * Build ItineraryDay[] for a trip. For each day, gather reservations whose interval
  * intersects the day in the trip's home zone, find any lodging covering the night
  * (its check-in ≤ day < check-out), and derive a city label.
+ *
+ * Day reservations are sorted by start_at so downstream derivations (deriveCity,
+ * transit pairs, the timeline UI) are deterministic regardless of DB row order —
+ * on a checkout/check-in changeover day the covering-night lodging wins, and any
+ * fallback walks reservations in chronological order.
  */
 export function buildItineraryDays(
   startDate: string,
@@ -144,15 +149,29 @@ export function buildItineraryDays(
 ): ItineraryDay[] {
   const dates = enumerateDays(startDate, endDate);
   return dates.map((date) => {
-    const onDay = reservations.filter((r) => {
-      const startDay = dateInZone(r.start_at, homeTimezone);
-      const endDay = r.end_at ? dateInZone(r.end_at, homeTimezone) : startDay;
-      return date >= startDay && date <= endDay;
-    });
-    const lodging = onDay.find((r) => r.type === 'lodging');
+    const onDay = reservations
+      .filter((r) => {
+        const startDay = dateInZone(r.start_at, homeTimezone);
+        const endDay = r.end_at ? dateInZone(r.end_at, homeTimezone) : startDay;
+        return date >= startDay && date <= endDay;
+      })
+      .sort((a, b) => a.start_at.localeCompare(b.start_at));
+    // Prefer the lodging covering the *night* of this day (check-in ≤ day < check-out)
+    // so a changeover day resolves to where you sleep, not where you woke up. Fall back
+    // to the earliest intersecting lodging (checkout-morning days) for the label only.
+    const lodging =
+      onDay.find((r) => r.type === 'lodging' && coversNight(r, date, homeTimezone)) ??
+      onDay.find((r) => r.type === 'lodging');
     const city = deriveCity(lodging, onDay, locationsById);
     return { date, reservations: onDay, lodging, city };
   });
+}
+
+/** True when the lodging's check-in ≤ isoDate < check-out in the home zone. */
+function coversNight(lodging: Reservation, isoDate: string, homeTimezone: string): boolean {
+  const startDay = dateInZone(lodging.start_at, homeTimezone);
+  const endDay = lodging.end_at ? dateInZone(lodging.end_at, homeTimezone) : startDay;
+  return isoDate >= startDay && isoDate < endDay;
 }
 
 function deriveCity(
