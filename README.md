@@ -4,19 +4,15 @@ iPhone itinerary app. Connect Gmail or drag-and-drop screenshots/PDFs to populat
 
 See [`docs/PRD.md`](docs/PRD.md) for the full product spec and multi-agent build plan.
 
-## Foundation status
+## Status
 
-This branch ships **Agent 1: Foundation** per the PRD. The three ingestion/UI verticals (Gmail, Upload+OCR, Itinerary UI) land in separate PRs after this merges.
+All four PRD verticals have landed:
+- **Foundation** — Expo app boots, Drizzle migrations apply on first launch, all seven tables with CHECK constraints + `updated_at` triggers + singleton rows, typed domain layer, blessed UI primitives in `src/components/ui/`, PII-safe seed pipeline.
+- **Gmail ingestion** — on-device PKCE OAuth, Gmail REST client, Claude tool-use extraction with prompt caching, `runGmailSync` orchestrator with trip auto-assign, dedup, and auto-promote ≥ 0.9.
+- **Upload + OCR** — photo/PDF pickers, `modules/AppleVision` native Swift module (VNRecognizeTextRequest, PDFKit page rasterization), `runUploadSync` orchestrator with attachment linkage on accept.
+- **Itinerary UI** — trip list/create, day-by-day timeline with city grouping + "night N of M", map screen (react-native-maps + on-device CLGeocoder backfill), manual CRUD with edit-guard, review queue with dedup-hit surfacing.
 
-What works today:
-- Expo app boots, Drizzle migrations apply on first launch, dev screen shows the seeded Japan 2026 fixture.
-- All seven tables (trips, reservations, locations, attachments, extraction_candidates, gmail_sync_state, settings) created with CHECK constraints + `updated_at` triggers + singleton seed rows.
-- Typed domain layer: discriminated-union `ReservationSchema`, `ExtractionCandidateSchema`, Trip/Location.
-- Services: `trips`, `locations`, `reservations`, `candidates`, `storage` (expo-file-system), `secrets` (Keychain), `dedup`.
-- Blessed UI primitives in `src/components/ui/` — verticals must not roll their own.
-- PII-safe seed pipeline: real ITINERARY → `pnpm scrub` → committed scrubbed JSON.
-
-Not yet built (deferred to verticals): Gmail OAuth, Claude API extraction, Apple Vision native module, upload UI, consumer timeline/map, review queue.
+Correctness is enforced by five Node-runnable e2e pathways (`pnpm test:e2e`) that drive the real services and orchestrators through an injectable DB port — see [`docs/overnight/PROGRESS.md`](docs/overnight/PROGRESS.md). UI screens are typecheck/lint-gated and need a simulator pass for visual verification.
 
 ## Prerequisites
 
@@ -81,6 +77,20 @@ The seed script prefers the private file when present, so locally you see real d
 CI gates:
 - `pnpm scrub -- --check` — re-scrubs in memory and fails if the committed file is stale.
 - `scripts/pii-gate.sh` — greps tracked files against a list of known real PII tokens. The token list lives in `.pii-tokens` (git-ignored). In CI it's hydrated from the `PII_TOKENS` GitHub Actions secret; locally, you maintain it by hand. When no list is present, the gate is a no-op.
+
+## Apple Vision OCR (native module)
+
+`modules/AppleVision/` is a local expo-module (autolinked from `./modules` — no config needed) exposing `recognizeText(uri)`:
+
+- Images are OCRed directly with `VNRecognizeTextRequest` (accurate mode, en-US + ja-JP).
+- PDFs are rasterized page-by-page via PDFKit at 2x and each page is OCRed; page texts concatenate.
+- Returns `{ text, blocks: [{ text, bbox }] }` with Vision-normalized bounding boxes.
+
+The module compiles into the dev build on the next `pnpm ios` (Expo runs prebuild + pod install automatically). Under Node (e2e/smoke) the production `ocrImage` is never loaded — tests inject OCR text via `__setOcrForTest`.
+
+## Map + geocoding
+
+The trip map (`/trips/[id]/map`) renders every reservation location as a type-coded MapKit marker. Coordinates come from `src/services/geocode.ts`: on first map open, `geocodeMissingLocations()` resolves each location's `geocode_query` via expo-location's `geocodeAsync` (Apple CLGeocoder — on-device, free, no API key) and stores lat/lng on the row. Locations the geocoder can't place fall back to a list with Apple Maps search links.
 
 ## Visual system
 

@@ -347,3 +347,39 @@ non-zero on any failed assertion).
     cross-group hrefs (`/review`, `/trips/[id]`) resolve via the global Expo Router route map.
 - **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":139}`.
 - **Blockers:** none. See the MORNING REPORT at the top of this file for the full handoff.
+
+## P7 — close the morning-report gaps (Apple Vision OCR, map + geocoding, deriveCity) — DONE
+Run on branch `cursor/complete-mvp-native-map-b015` (off `main` after the overnight merge). Addresses
+items (iii) and (iv) of the MORNING REPORT above.
+
+- **deriveCity determinism (follow-up iv.1):** `buildItineraryDays` now sorts each day's
+  reservations by `start_at` and prefers the lodging covering the *night* of the day
+  (check-in ≤ day < check-out) over the first row-order lodging, so a checkout/check-in
+  changeover day deterministically resolves to where you sleep. The trip-lifecycle e2e
+  assertion tightened from `'Tokyo' || 'Kyoto'` to exactly `'Kyoto'`.
+- **Apple Vision OCR (gap iii.2 / follow-up iv.3):** NEW local expo-module
+  `modules/AppleVision/` (autolinked from `./modules`, no config change needed):
+  `recognizeText(uri)` runs `VNRecognizeTextRequest` (accurate, en-US + ja-JP) on images and
+  rasterizes PDFs page-by-page with PDFKit at 2x before OCR; returns `{ text, blocks }` with
+  Vision-normalized bboxes. `src/services/ocr.ts` production `ocrImage` now calls the module
+  through a deferred import (Node never loads expo-modules-core) and throws a descriptive
+  error when running without a development build. Test hatch unchanged. NOT runtime-verified
+  here (needs Xcode); compiles into the dev build on next `pnpm ios`.
+- **Map + geocoding (gap iii.3):** NEW `src/services/geocode.ts` — `geocodeQuery` via
+  expo-location `geocodeAsync` (CLGeocoder on iOS: on-device, free, no key), plus
+  `geocodeMissingLocations()` backfilling every lat/lng-null location sequentially (CLGeocoder
+  throttles bursts; misses stay null). Deferred import + `__setGeocodeForTest` hatch, mirrored
+  in the harness (`installMockGeocode`, teardown reset). NEW screen
+  `app/(consumer)/trips/[id]/map.tsx`: react-native-maps, type-coded markers (tailwind type
+  tokens), callouts opening Apple Maps, auto-fitted region, fallback list w/ Maps search links
+  for ungeocodable locations. Trip detail gains a Map button. Geocode backfill is exercised by
+  the trip-lifecycle e2e through the REAL `geocodeMissingLocations` (resolve persists, miss
+  stays null, second run only retries still-null rows). Map rendering itself needs a simulator.
+- **Deps:** added `expo-location@~56.0.19`.
+- **Pathway count unchanged at 5** — geocode assertions live inside pathway 4.
+- **Gate results:** `{"tc":"pass","lint":"pass","smoke":"pass","e2e":"pass","n":145}`.
+- **Still needs a Mac/simulator:** rendering every screen, the AppleVision module build
+  (`pnpm ios` → import a real screenshot/PDF end-to-end), map + geocoder behavior on device,
+  Gmail OAuth round-trip with a real client id.
+- **Remaining known follow-up:** UTC-midnight night math assumes no DST in the home zone
+  (iv.2) — fine for the modeled zones; revisit before supporting DST home zones.
