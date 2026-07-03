@@ -149,6 +149,9 @@ export default function TripDetailScreen() {
           <Link href="/upload" asChild>
             <Button title="Upload" variant="secondary" size="sm" />
           </Link>
+          <Link href={{ pathname: '/trips/[id]/map', params: { id: trip.id } }} asChild>
+            <Button title="Map" variant="secondary" size="sm" />
+          </Link>
         </View>
 
         {isEmpty ? (
