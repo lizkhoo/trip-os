@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { View, Text, Pressable, Modal, FlatList } from 'react-native';
+import { View, Text, Pressable, Modal, FlatList, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export interface SelectOption<T extends string = string> {
   value: T;
@@ -22,7 +23,12 @@ export function Select<T extends string = string>({
   placeholder = 'Select…',
 }: SelectProps<T>) {
   const [open, setOpen] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const current = options.find((o) => o.value === value);
+  // Cap the sheet below the native header / status bar so the top rows are
+  // always tappable (the previous full-height sheet rendered under the header).
+  const maxSheetHeight = windowHeight - insets.top - 64;
   return (
     <View>
       {label ? (
@@ -42,11 +48,26 @@ export function Select<T extends string = string>({
           className="flex-1 justify-end bg-ink/40"
           onPress={() => setOpen(false)}
           accessibilityRole="button"
+          accessibilityLabel="Dismiss"
         >
-          <View className="bg-paper rounded-t-3xl pb-8">
+          <Pressable
+            className="bg-paper rounded-t-3xl overflow-hidden"
+            style={{ maxHeight: maxSheetHeight }}
+            // Swallow taps inside the sheet so they don't dismiss the modal.
+            onPress={(e) => e.stopPropagation()}
+          >
+            <View className="flex-row items-center justify-between px-5 py-3 border-b border-paper-dim">
+              <Text className="text-xs uppercase tracking-widest text-ink-muted">
+                {label ?? placeholder}
+              </Text>
+              <Pressable onPress={() => setOpen(false)} hitSlop={8} accessibilityRole="button">
+                <Text className="text-base text-accent-rust">Cancel</Text>
+              </Pressable>
+            </View>
             <FlatList
               data={options}
               keyExtractor={(o) => o.value}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
               renderItem={({ item }) => (
                 <Pressable
                   className="px-5 py-4 border-b border-paper-dim"
@@ -55,11 +76,15 @@ export function Select<T extends string = string>({
                     setOpen(false);
                   }}
                 >
-                  <Text className="text-base text-ink">{item.label}</Text>
+                  <Text
+                    className={`text-base ${item.value === value ? 'text-accent-rust' : 'text-ink'}`}
+                  >
+                    {item.label}
+                  </Text>
                 </Pressable>
               )}
             />
-          </View>
+          </Pressable>
         </Pressable>
       </Modal>
     </View>
