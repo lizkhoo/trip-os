@@ -11,6 +11,21 @@ export interface DateTimePickerProps {
   mode?: 'date' | 'time' | 'datetime';
 }
 
+function formatValue(value: Date, mode: 'date' | 'time' | 'datetime'): string {
+  switch (mode) {
+    case 'date':
+      return value.toLocaleDateString();
+    case 'time':
+      return value.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    case 'datetime':
+      return value.toLocaleString();
+    default: {
+      const exhaustive: never = mode;
+      throw new Error(`Unhandled mode: ${exhaustive}`);
+    }
+  }
+}
+
 export function DateTimePicker({
   label,
   value,
@@ -20,7 +35,9 @@ export function DateTimePicker({
   const [open, setOpen] = useState(false);
 
   const handleChange = (_: DateTimePickerEvent, d?: Date) => {
-    if (Platform.OS === 'android') setOpen(false);
+    // Date-only selection is a single tap — dismiss immediately on both
+    // platforms. datetime/time on iOS stay open for multi-part adjustment.
+    if (Platform.OS === 'android' || mode === 'date') setOpen(false);
     if (d) onChange(d);
   };
 
@@ -33,7 +50,7 @@ export function DateTimePicker({
         className="border border-paper-dim bg-paper rounded-xl px-3 py-2.5"
         onPress={() => setOpen(true)}
       >
-        <Text className="text-base text-ink">{value.toLocaleString()}</Text>
+        <Text className="text-base text-ink">{formatValue(value, mode)}</Text>
       </Pressable>
       {open ? (
         <RNDateTimePicker
