@@ -41,11 +41,15 @@ export default function TripsIndex() {
       <Stack.Screen
         options={{
           title: 'Trips',
-          headerRight: () => (
-            <Pressable onPress={() => router.push('/trips/new')} hitSlop={8}>
-              <Text style={{ color: '#b04a2a', fontSize: 17 }}>+ New</Text>
-            </Pressable>
-          ),
+          // Empty state already has its own primary CTA — avoid duplicate "+ New".
+          headerRight:
+            trips.length === 0
+              ? undefined
+              : () => (
+                  <Pressable onPress={() => router.push('/trips/new')} hitSlop={8}>
+                    <Text style={{ color: '#b04a2a', fontSize: 17 }}>+ New</Text>
+                  </Pressable>
+                ),
         }}
       />
       <PullToRefresh
