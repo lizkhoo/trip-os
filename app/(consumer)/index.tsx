@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { View, Text, Pressable, Image } from 'react-native';
 import { useFocusEffect, useRouter, Link, Stack } from 'expo-router';
 import { Button, Card, EmptyState, PullToRefresh } from '@/components/ui';
+import { TravelSpotIllustration } from '@/components/illustrations/TravelSpotIllustration';
 import { listTrips } from '@/services/trips';
 import type { Trip } from '@/domain/trip';
 
@@ -59,6 +60,7 @@ export default function TripsIndex() {
       >
         {trips.length === 0 ? (
           <EmptyState
+            illustration={<TravelSpotIllustration />}
             title="No trips yet"
             description="Create one, or connect Gmail to import existing confirmations."
             action={
