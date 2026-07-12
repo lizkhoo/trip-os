@@ -112,6 +112,11 @@ async function authedFetch(path: string, init?: RequestInit): Promise<Response> 
 }
 
 async function refreshAccessToken(tokens: GmailTokens): Promise<GmailTokens> {
+  if (!tokens.refreshToken) {
+    throw new Error(
+      'Gmail access token expired and no refresh token is stored — disconnect and reconnect Gmail.',
+    );
+  }
   const params = new URLSearchParams({
     client_id: getClientId(),
     refresh_token: tokens.refreshToken,
