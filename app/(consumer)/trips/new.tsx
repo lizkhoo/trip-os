@@ -5,11 +5,11 @@
  * Calls the REAL createTrip with a home-timezone Select sourced from
  * src/lib/timezones.ts, then routes to the new trip's detail timeline.
  */
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Button, Input, Select, DateTimePicker } from '@/components/ui';
-import { TIMEZONE_OPTIONS } from '@/lib/timezones';
+import { getTimezoneOptions } from '@/lib/timezones';
 import { createTrip } from '@/services/trips';
 
 /** yyyy-mm-dd for an instant in the given IANA zone. */
@@ -33,6 +33,7 @@ export default function TripCreateScreen() {
   const [startDate, setStartDate] = useState<Date>(new Date());
   const [endDate, setEndDate] = useState<Date>(new Date());
   const [busy, setBusy] = useState(false);
+  const timezoneOptions = useMemo(() => getTimezoneOptions(), []);
 
   const onSave = useCallback(async () => {
     if (!title.trim()) {
@@ -74,7 +75,7 @@ export default function TripCreateScreen() {
         <Select
           label="Home timezone"
           value={timezone}
-          options={TIMEZONE_OPTIONS}
+          options={timezoneOptions}
           onChange={setTimezone}
         />
         <DateTimePicker label="Starts" value={startDate} onChange={setStartDate} mode="date" />
