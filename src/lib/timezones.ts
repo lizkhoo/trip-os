@@ -33,6 +33,7 @@ const ZONES: ZoneEntry[] = [
   { id: 'Asia/Tokyo', city: 'Tokyo', std: 'JST' },
   { id: 'Australia/Sydney', city: 'Sydney', std: 'AEST', dst: 'AEDT' },
   { id: 'Pacific/Auckland', city: 'Auckland', std: 'NZST', dst: 'NZDT' },
+  { id: 'Pacific/Honolulu', city: 'Honolulu', std: 'HST' },
 ];
 
 /** Offset of `timeZone` from UTC in minutes at the given instant (DST-aware). */
