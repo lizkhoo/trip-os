@@ -4,6 +4,7 @@ import { useFocusEffect, useRouter, Link, Stack } from 'expo-router';
 import { Button, Card, EmptyState, PullToRefresh } from '@/components/ui';
 import { TravelSpotIllustration } from '@/components/illustrations/TravelSpotIllustration';
 import { listTrips } from '@/services/trips';
+import { isOnboardingComplete } from '@/services/onboarding';
 import type { Trip } from '@/domain/trip';
 
 export default function TripsIndex() {
@@ -27,9 +28,19 @@ export default function TripsIndex() {
 
   useFocusEffect(
     useCallback(() => {
-      void refresh();
-      void syncGmail();
-    }, [refresh, syncGmail]),
+      let cancelled = false;
+      void (async () => {
+        if (!(await isOnboardingComplete())) {
+          if (!cancelled) router.replace('/onboarding');
+          return;
+        }
+        await refresh();
+        await syncGmail();
+      })();
+      return () => {
+        cancelled = true;
+      };
+    }, [refresh, syncGmail, router]),
   );
 
   const onRefresh = useCallback(async () => {

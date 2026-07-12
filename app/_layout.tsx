@@ -49,6 +49,7 @@ export default function RootLayout() {
         >
           <Stack.Screen name="(consumer)" options={{ headerShown: false }} />
           <Stack.Screen name="(admin)" options={{ headerShown: false }} />
+          <Stack.Screen name="onboarding" options={{ headerShown: false }} />
           <Stack.Screen name="dev" options={{ headerShown: false }} />
         </Stack>
       </SafeAreaProvider>
