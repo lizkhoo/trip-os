@@ -8,7 +8,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { ScrollView, View, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Button, Input, Select, DateTimePicker } from '@/components/ui';
+import { Button, LocationAutocomplete, Select, DateTimePicker } from '@/components/ui';
 import { getTimezoneOptions } from '@/lib/timezones';
 import { createTrip } from '@/services/trips';
 
@@ -71,7 +71,13 @@ export default function TripCreateScreen() {
       <Stack.Screen options={{ title: 'New trip' }} />
 
       <View className="gap-4">
-        <Input label="Title" value={title} onChangeText={setTitle} placeholder="Japan 2026" />
+        <LocationAutocomplete
+          label="Title"
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Anaheim, California"
+          onSelectLocation={(loc) => setTimezone(loc.timezone)}
+        />
         <Select
           label="Home timezone"
           value={timezone}
