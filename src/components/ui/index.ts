@@ -6,6 +6,7 @@ export { ConfidenceChip, type ConfidenceChipProps } from './ConfidenceChip';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { Button, type ButtonProps } from './Button';
 export { Input, type InputProps } from './Input';
+export { LocationAutocomplete, type LocationAutocompleteProps } from './LocationAutocomplete';
 export { Select, type SelectOption, type SelectProps } from './Select';
 export { DateTimePicker, type DateTimePickerProps } from './DateTimePicker';
 export { BottomSheet, type BottomSheetHandle, type BottomSheetProps } from './BottomSheet';
