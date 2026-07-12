@@ -41,5 +41,17 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 - Onboarding completion flag stored in SecureStore (`src/services/onboarding.ts`); first launch redirects from trips home to `/onboarding`. Gmail connect logic extracted to `src/services/gmailAuth.ts` and reused by connect screen + onboarding.
 - Background subagents timed out twice mid-run; issues #22–#24 and #20 were completed by the worker; #25–#27 finished in a follow-up session.
 
+### PR map (feedback milestone)
+| Issue | PR | Summary |
+|-------|-----|---------|
+| #22 | #28 | Hide header "+ New" when trip list empty |
+| #23 | #29 | Date-only display in `DateTimePicker` |
+| #21 | #30 | Select modal safe-area + Cancel |
+| #24 | #31 | Timezone labels with UTC offset + abbreviation |
+| #20 | #32 | Gmail OAuth hardening + `react-native-app-auth` plugin |
+| #25 | #33 | Offline trip title autocomplete + timezone pre-fill |
+| #26 | #34 | Illustrated empty state (View + Reanimated) |
+| #27 | #35 | Onboarding wizard + `gmailAuth.ts` extraction |
+
 ### Duplicate repo gotcha
 - There is a stale, broken copy of the repo at `~/Documents/GitHub/trip-os` (its `.git` file points at a dead worktree, node_modules incomplete). Running `npx expo run:ios --device` there silently half-runs prebuild and goes nowhere. The real repo is `~/Developer/trip-os` — always run app commands from there. Consider deleting the stale copy (the `trip-os-upload-ocr` worktree next to it is separate and still in use).
