@@ -2,9 +2,15 @@ import { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View, Alert } from 'react-native';
 import { Stack } from 'expo-router';
 import { HeaderBack } from '@/components/HeaderBack';
-import Constants from 'expo-constants';
-import { authorize, refresh, type AuthorizeResult } from 'react-native-app-auth';
+import { refresh } from 'react-native-app-auth';
 import { Button, Card, EmptyState } from '@/components/ui';
+import {
+  connectGmail,
+  describeGmailAuthorizeError,
+  getConfiguredGoogleClientId,
+  gmailAuthConfig,
+  GMAIL_CLIENT_ID_MISSING_MESSAGE,
+} from '@/services/gmailAuth';
 import {
   clearGmailTokens,
   getGmailTokens,
@@ -12,47 +18,6 @@ import {
   type GmailTokens,
 } from '@/services/secrets';
 import { runGmailSync } from '@/services/syncGmail';
-
-const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
-
-// Uses the app's own URL scheme (declared in app.config.ts) — Google's iOS OAuth
-// client accepts any custom-scheme redirect the developer registers in the Cloud
-// Console, so we don't need the reversed-clientid scheme that older guides use.
-const REDIRECT_URL = 'trip-os://oauthredirect';
-
-function getConfiguredClientId(): string | null {
-  const id = Constants.expoConfig?.extra?.googleClientId;
-  return typeof id === 'string' && id.length > 0 ? id : null;
-}
-
-function authConfig(clientId: string) {
-  return {
-    issuer: 'https://accounts.google.com',
-    clientId,
-    redirectUrl: REDIRECT_URL,
-    scopes: [GMAIL_SCOPE],
-    usePKCE: true,
-  };
-}
-
-const CLIENT_ID_MISSING_MESSAGE =
-  'This build has no Google OAuth client id. Set TRIPOS_GOOGLE_CLIENT_ID (see README "Gmail setup"), ' +
-  'then rebuild the app — the id is baked in at build time.';
-
-function describeAuthorizeError(e: unknown): string {
-  const message = e instanceof Error ? e.message : String(e);
-  const lower = message.toLowerCase();
-  if (lower.includes('invalid_request') || lower.includes('redirect')) {
-    return (
-      `${message}\n\nCheck the Google Cloud Console iOS OAuth client: bundle id must be ` +
-      `com.lizkhoo.tripos and the redirect URI must be exactly ${REDIRECT_URL}.`
-    );
-  }
-  if (lower.includes('access_denied') || lower.includes('cancel')) {
-    return 'Sign-in was cancelled or denied. Try again and approve the Gmail read-only scope.';
-  }
-  return message;
-}
 
 export default function ConnectScreen() {
   const [tokens, setTokens] = useState<GmailTokens | null>(null);
@@ -68,23 +33,15 @@ export default function ConnectScreen() {
   }, [load]);
 
   const connect = useCallback(async () => {
-    const clientId = getConfiguredClientId();
-    if (!clientId) {
-      Alert.alert('Google client id missing', CLIENT_ID_MISSING_MESSAGE);
+    if (!getConfiguredGoogleClientId()) {
+      Alert.alert('Google client id missing', GMAIL_CLIENT_ID_MISSING_MESSAGE);
       return;
     }
     setBusy(true);
     try {
-      const result: AuthorizeResult = await authorize(authConfig(clientId));
-      const stored: GmailTokens = {
-        accessToken: result.accessToken,
-        refreshToken: result.refreshToken ?? '',
-        accessTokenExpirationDate: result.accessTokenExpirationDate,
-        scopes: result.scopes,
-      };
-      await setGmailTokens(stored);
-      setTokens(stored);
-      if (!result.refreshToken) {
+      const result = await connectGmail();
+      setTokens(result.tokens);
+      if (result.missingRefreshToken) {
         Alert.alert(
           'Connected without refresh token',
           'Google did not return a refresh token, so this connection expires in about an hour. ' +
@@ -92,7 +49,7 @@ export default function ConnectScreen() {
         );
       }
     } catch (e) {
-      Alert.alert('Connect failed', describeAuthorizeError(e));
+      Alert.alert('Connect failed', describeGmailAuthorizeError(e));
     } finally {
       setBusy(false);
     }
@@ -105,9 +62,9 @@ export default function ConnectScreen() {
 
   const refreshNow = useCallback(async () => {
     if (!tokens) return;
-    const clientId = getConfiguredClientId();
+    const clientId = getConfiguredGoogleClientId();
     if (!clientId) {
-      Alert.alert('Google client id missing', CLIENT_ID_MISSING_MESSAGE);
+      Alert.alert('Google client id missing', GMAIL_CLIENT_ID_MISSING_MESSAGE);
       return;
     }
     if (!tokens.refreshToken) {
@@ -119,7 +76,7 @@ export default function ConnectScreen() {
     }
     setBusy(true);
     try {
-      const r = await refresh(authConfig(clientId), { refreshToken: tokens.refreshToken });
+      const r = await refresh(gmailAuthConfig(clientId), { refreshToken: tokens.refreshToken });
       const updated: GmailTokens = {
         ...tokens,
         accessToken: r.accessToken,
@@ -201,9 +158,9 @@ export default function ConnectScreen() {
                 />
               }
             />
-            {getConfiguredClientId() ? null : (
+            {getConfiguredGoogleClientId() ? null : (
               <Text className="text-xs text-accent-rust text-center mt-2 px-4">
-                {CLIENT_ID_MISSING_MESSAGE}
+                {GMAIL_CLIENT_ID_MISSING_MESSAGE}
               </Text>
             )}
           </View>
