@@ -20,8 +20,12 @@ const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 // Console, so we don't need the reversed-clientid scheme that older guides use.
 const REDIRECT_URL = 'trip-os://oauthredirect';
 
-function authConfig() {
-  const clientId = Constants.expoConfig?.extra?.googleClientId ?? '';
+function getConfiguredClientId(): string | null {
+  const id = Constants.expoConfig?.extra?.googleClientId;
+  return typeof id === 'string' && id.length > 0 ? id : null;
+}
+
+function authConfig(clientId: string) {
   return {
     issuer: 'https://accounts.google.com',
     clientId,
@@ -29,6 +33,25 @@ function authConfig() {
     scopes: [GMAIL_SCOPE],
     usePKCE: true,
   };
+}
+
+const CLIENT_ID_MISSING_MESSAGE =
+  'This build has no Google OAuth client id. Set TRIPOS_GOOGLE_CLIENT_ID (see README "Gmail setup"), ' +
+  'then rebuild the app — the id is baked in at build time.';
+
+function describeAuthorizeError(e: unknown): string {
+  const message = e instanceof Error ? e.message : String(e);
+  const lower = message.toLowerCase();
+  if (lower.includes('invalid_request') || lower.includes('redirect')) {
+    return (
+      `${message}\n\nCheck the Google Cloud Console iOS OAuth client: bundle id must be ` +
+      `com.lizkhoo.tripos and the redirect URI must be exactly ${REDIRECT_URL}.`
+    );
+  }
+  if (lower.includes('access_denied') || lower.includes('cancel')) {
+    return 'Sign-in was cancelled or denied. Try again and approve the Gmail read-only scope.';
+  }
+  return message;
 }
 
 export default function ConnectScreen() {
@@ -45,9 +68,14 @@ export default function ConnectScreen() {
   }, [load]);
 
   const connect = useCallback(async () => {
+    const clientId = getConfiguredClientId();
+    if (!clientId) {
+      Alert.alert('Google client id missing', CLIENT_ID_MISSING_MESSAGE);
+      return;
+    }
     setBusy(true);
     try {
-      const result: AuthorizeResult = await authorize(authConfig());
+      const result: AuthorizeResult = await authorize(authConfig(clientId));
       const stored: GmailTokens = {
         accessToken: result.accessToken,
         refreshToken: result.refreshToken ?? '',
@@ -56,8 +84,15 @@ export default function ConnectScreen() {
       };
       await setGmailTokens(stored);
       setTokens(stored);
+      if (!result.refreshToken) {
+        Alert.alert(
+          'Connected without refresh token',
+          'Google did not return a refresh token, so this connection expires in about an hour. ' +
+            'To fix: remove trip-os at myaccount.google.com/permissions, then Disconnect and reconnect here.',
+        );
+      }
     } catch (e) {
-      Alert.alert('Connect failed', (e as Error).message);
+      Alert.alert('Connect failed', describeAuthorizeError(e));
     } finally {
       setBusy(false);
     }
@@ -70,9 +105,21 @@ export default function ConnectScreen() {
 
   const refreshNow = useCallback(async () => {
     if (!tokens) return;
+    const clientId = getConfiguredClientId();
+    if (!clientId) {
+      Alert.alert('Google client id missing', CLIENT_ID_MISSING_MESSAGE);
+      return;
+    }
+    if (!tokens.refreshToken) {
+      Alert.alert(
+        'No refresh token stored',
+        'This connection has no refresh token. Disconnect and reconnect Gmail to get one.',
+      );
+      return;
+    }
     setBusy(true);
     try {
-      const r = await refresh(authConfig(), { refreshToken: tokens.refreshToken });
+      const r = await refresh(authConfig(clientId), { refreshToken: tokens.refreshToken });
       const updated: GmailTokens = {
         ...tokens,
         accessToken: r.accessToken,
@@ -142,13 +189,24 @@ export default function ConnectScreen() {
             ) : null}
           </View>
         ) : (
-          <EmptyState
-            title="Not connected"
-            description="Authorize trip-os to read your Gmail confirmation emails."
-            action={
-              <Button title={busy ? 'Connecting…' : 'Connect Gmail'} onPress={connect} disabled={busy} />
-            }
-          />
+          <View>
+            <EmptyState
+              title="Not connected"
+              description="Authorize trip-os to read your Gmail confirmation emails."
+              action={
+                <Button
+                  title={busy ? 'Connecting…' : 'Connect Gmail'}
+                  onPress={connect}
+                  disabled={busy}
+                />
+              }
+            />
+            {getConfiguredClientId() ? null : (
+              <Text className="text-xs text-accent-rust text-center mt-2 px-4">
+                {CLIENT_ID_MISSING_MESSAGE}
+              </Text>
+            )}
+          </View>
         )}
       </Card>
     </ScrollView>

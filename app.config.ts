@@ -9,6 +9,7 @@ const config: ExpoConfig = {
   userInterfaceStyle: 'automatic',
   ios: {
     bundleIdentifier: 'com.lizkhoo.tripos',
+    appleTeamId: '3933642U9H',
     supportsTablet: false,
     deploymentTarget: '16.4',
     infoPlist: {
@@ -25,6 +26,9 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     'expo-sqlite',
+    // Required for OAuth: patches the generated AppDelegate so the browser
+    // redirect resumes the authorize() flow. Without it, connect hangs/fails.
+    ['react-native-app-auth', { redirectUrls: ['trip-os://oauthredirect'] }],
     [
       'expo-image-picker',
       {
