@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { View } from 'react-native';
+import { Image, type ImageSourcePropType } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -14,21 +14,29 @@ interface OnboardingIllustrationProps {
   variant: OnboardingIllustrationVariant;
 }
 
-/** Step illustrations sharing the travel-spot visual language. */
+const SOURCES: Record<OnboardingIllustrationVariant, ImageSourcePropType> = {
+  gmail: require('../../../assets/illustrations/onboarding-gmail.webp'),
+  anthropic: require('../../../assets/illustrations/onboarding-anthropic.webp'),
+  trip: require('../../../assets/illustrations/onboarding-trip.webp'),
+};
+
+/** Whimsical 2D rainbow spot illustrations (see docs/ILLUSTRATIONS.md). */
 export function OnboardingIllustration({ variant }: OnboardingIllustrationProps) {
   const opacity = useSharedValue(0);
-  const scale = useSharedValue(0.92);
+  const scale = useSharedValue(0.94);
 
   useEffect(() => {
+    opacity.value = 0;
+    scale.value = 0.94;
     opacity.value = withDelay(
-      80,
-      withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }),
+      60,
+      withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }),
     );
     scale.value = withDelay(
-      80,
-      withTiming(1, { duration: 600, easing: Easing.out(Easing.cubic) }),
+      60,
+      withTiming(1, { duration: 520, easing: Easing.out(Easing.cubic) }),
     );
-  }, [opacity, scale]);
+  }, [opacity, scale, variant]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -36,60 +44,13 @@ export function OnboardingIllustration({ variant }: OnboardingIllustrationProps)
   }));
 
   return (
-    <Animated.View style={animatedStyle} className="items-center justify-center h-32">
-      {variant === 'gmail' ? <GmailArt /> : null}
-      {variant === 'anthropic' ? <AnthropicArt /> : null}
-      {variant === 'trip' ? <TripArt /> : null}
+    <Animated.View style={animatedStyle} className="items-center justify-center">
+      <Image
+        source={SOURCES[variant]}
+        accessibilityIgnoresInvertColors
+        style={{ width: 200, height: 200 }}
+        resizeMode="contain"
+      />
     </Animated.View>
-  );
-}
-
-function GmailArt() {
-  return (
-    <View className="items-center">
-      <View
-        className="rounded-2xl bg-accent-slate/15 border-2 border-accent-slate/30 items-center justify-center"
-        style={{ width: 88, height: 64 }}
-      >
-        <View className="rounded-full bg-accent-rust" style={{ width: 28, height: 28 }} />
-      </View>
-      <View
-        className="absolute -top-1 rounded-full bg-accent-ochre/40"
-        style={{ width: 20, height: 20, right: 48 }}
-      />
-    </View>
-  );
-}
-
-function AnthropicArt() {
-  return (
-    <View className="items-center">
-      <View
-        className="rounded-full bg-accent-plum/15 border-2 border-accent-plum/30 items-center justify-center"
-        style={{ width: 72, height: 72 }}
-      >
-        <View className="rounded-md bg-accent-plum" style={{ width: 28, height: 8 }} />
-        <View className="rounded-md bg-accent-plum/60 mt-2" style={{ width: 20, height: 6 }} />
-      </View>
-    </View>
-  );
-}
-
-function TripArt() {
-  return (
-    <View className="relative w-36 h-24 items-center justify-end">
-      <View
-        className="absolute bottom-0 rounded-full bg-accent-ochre/25"
-        style={{ width: 110, height: 20 }}
-      />
-      <View
-        className="absolute bottom-4 rounded-t-full bg-accent-forest/80"
-        style={{ width: 64, height: 36 }}
-      />
-      <View
-        className="absolute bottom-8 rounded-full bg-accent-rust"
-        style={{ width: 16, height: 16, right: 30 }}
-      />
-    </View>
   );
 }
