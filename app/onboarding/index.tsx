@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { View, Text, Alert, ScrollView } from 'react-native';
+import { View, Text, Alert, ScrollView, Pressable } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Button, Input } from '@/components/ui';
 import { OnboardingIllustration } from '@/components/illustrations/OnboardingIllustration';
@@ -16,6 +16,28 @@ type OnboardingStep = 'gmail' | 'anthropic' | 'trip';
 
 const STEPS: OnboardingStep[] = ['gmail', 'anthropic', 'trip'];
 
+const STEP_COPY: Record<
+  OnboardingStep,
+  { title: string; why: string; body: string }
+> = {
+  gmail: {
+    title: 'Connect Gmail',
+    why: 'We need inbox access so flight and hotel confirmations can be imported automatically.',
+    body:
+      'OAuth runs in a system browser — your password never touches this app. Scope is read-only.',
+  },
+  anthropic: {
+    title: 'Connect Anthropic',
+    why: 'Claude turns confirmation emails into structured reservations you can review.',
+    body: 'Your API key is stored in the iOS Keychain and never leaves the device except to call Anthropic.',
+  },
+  trip: {
+    title: 'Create your first trip',
+    why: 'A trip is the container that holds imported reservations on a day-by-day itinerary.',
+    body: 'Name a destination, pick dates, and start building your itinerary.',
+  },
+};
+
 export default function OnboardingScreen() {
   const router = useRouter();
   const [stepIndex, setStepIndex] = useState(0);
@@ -25,6 +47,8 @@ export default function OnboardingScreen() {
   const [keyInput, setKeyInput] = useState('');
 
   const step = STEPS[stepIndex] ?? 'trip';
+  const copy = STEP_COPY[step];
+  const canGoBack = stepIndex > 0;
 
   const refreshStatus = useCallback(async () => {
     setGmailConnected(!!(await getGmailTokens()));
@@ -41,6 +65,11 @@ export default function OnboardingScreen() {
     })();
   }, [refreshStatus, router]);
 
+  // Re-read connection state whenever the user lands on a step (including going back).
+  useEffect(() => {
+    void refreshStatus();
+  }, [stepIndex, refreshStatus]);
+
   const finish = useCallback(async () => {
     await setOnboardingComplete();
     router.replace('/');
@@ -53,6 +82,19 @@ export default function OnboardingScreen() {
     }
     setStepIndex((i) => i + 1);
   }, [finish, stepIndex]);
+
+  const goBack = useCallback(() => {
+    if (stepIndex <= 0) return;
+    setStepIndex((i) => i - 1);
+  }, [stepIndex]);
+
+  const goToStep = useCallback((index: number) => {
+    if (index < 0 || index >= STEPS.length) return;
+    // Only allow jumping to the current step or earlier visited/skipped steps.
+    if (index <= stepIndex) {
+      setStepIndex(index);
+    }
+  }, [stepIndex]);
 
   const skip = useCallback(() => {
     goNext();
@@ -99,28 +141,53 @@ export default function OnboardingScreen() {
       contentInsetAdjustmentBehavior="automatic"
       contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingTop: 24, paddingBottom: 48 }}
     >
-      <Stack.Screen options={{ title: 'Welcome', headerBackVisible: false }} />
+      <Stack.Screen
+        options={{
+          title: 'Welcome',
+          headerBackVisible: false,
+          headerLeft: canGoBack
+            ? () => (
+                <Pressable onPress={goBack} hitSlop={12} accessibilityRole="button" accessibilityLabel="Back">
+                  <Text className="text-base text-accent-rust px-1">Back</Text>
+                </Pressable>
+              )
+            : undefined,
+        }}
+      />
 
       <View className="flex-row justify-center gap-2 mb-6">
-        {STEPS.map((s, i) => (
-          <View
-            key={s}
-            className={`h-1.5 rounded-full ${i <= stepIndex ? 'bg-accent-rust' : 'bg-paper-dim'}`}
-            style={{ width: 40 }}
-          />
-        ))}
+        {STEPS.map((s, i) => {
+          const filled = i <= stepIndex;
+          const tappable = i < stepIndex;
+          return (
+            <Pressable
+              key={s}
+              onPress={() => goToStep(i)}
+              disabled={!tappable}
+              accessibilityRole="button"
+              accessibilityLabel={`Step ${i + 1}${tappable ? ', go back' : ''}`}
+              hitSlop={8}
+            >
+              <View
+                className={`h-1.5 rounded-full ${filled ? 'bg-accent-rust' : 'bg-paper-dim'}`}
+                style={{ width: 40 }}
+              />
+            </Pressable>
+          );
+        })}
       </View>
 
       <OnboardingIllustration variant={step} />
 
+      <View className="mt-4">
+        <Text className="font-serif text-2xl text-ink text-center">{copy.title}</Text>
+        <Text className="text-sm text-ink text-center mt-3 font-medium">{copy.why}</Text>
+        <Text className="text-sm text-ink-muted text-center mt-2">{copy.body}</Text>
+      </View>
+
       {step === 'gmail' ? (
         <View className="mt-4">
-          <Text className="font-serif text-2xl text-ink text-center">Connect Gmail</Text>
-          <Text className="text-sm text-ink-muted text-center mt-2">
-            Import flight and hotel confirmations from your inbox. OAuth runs in a system browser —
-            your password never touches this app.
-          </Text>
-          <Text className="text-xs text-ink-muted text-center mt-4">
+          <Text className="text-xs text-ink-muted text-center mt-2">
             {gmailConnected ? 'Connected' : 'Not connected yet'}
           </Text>
           <View className="mt-6 gap-2">
@@ -133,6 +200,9 @@ export default function OnboardingScreen() {
             {gmailConnected ? (
               <Button title="Continue" variant="secondary" onPress={goNext} disabled={busy} />
             ) : null}
+            {canGoBack ? (
+              <Button title="Back" variant="ghost" onPress={goBack} disabled={busy} />
+            ) : null}
           </View>
           {getConfiguredGoogleClientId() ? null : (
             <Text className="text-xs text-accent-rust text-center mt-3">{GMAIL_CLIENT_ID_MISSING_MESSAGE}</Text>
@@ -142,16 +212,12 @@ export default function OnboardingScreen() {
 
       {step === 'anthropic' ? (
         <View className="mt-4">
-          <Text className="font-serif text-2xl text-ink text-center">Connect Anthropic</Text>
-          <Text className="text-sm text-ink-muted text-center mt-2">
-            trip-os uses Claude to extract reservations from email text. Your API key is stored in the
-            iOS Keychain.
-          </Text>
           {hasAnthropicKey ? (
             <View className="mt-6 gap-2">
               <Text className="text-base text-ink text-center">API key stored</Text>
               <Button title="Continue" onPress={goNext} />
               <Button title="Skip for now" variant="ghost" onPress={skip} />
+              {canGoBack ? <Button title="Back" variant="ghost" onPress={goBack} /> : null}
             </View>
           ) : (
             <View className="mt-6 gap-2">
@@ -165,6 +231,7 @@ export default function OnboardingScreen() {
               />
               <Button title="Save key" onPress={saveAnthropicKey} disabled={!keyInput.trim()} />
               <Button title="Skip for now" variant="ghost" onPress={skip} />
+              {canGoBack ? <Button title="Back" variant="ghost" onPress={goBack} /> : null}
             </View>
           )}
         </View>
@@ -172,13 +239,10 @@ export default function OnboardingScreen() {
 
       {step === 'trip' ? (
         <View className="mt-4">
-          <Text className="font-serif text-2xl text-ink text-center">Create your first trip</Text>
-          <Text className="text-sm text-ink-muted text-center mt-2">
-            Name a destination, pick dates, and start building your itinerary.
-          </Text>
           <View className="mt-6 gap-2">
             <Button title="Create a trip" onPress={createTrip} />
             <Button title="Skip for now" variant="ghost" onPress={() => void finish()} />
+            {canGoBack ? <Button title="Back" variant="ghost" onPress={goBack} /> : null}
           </View>
         </View>
       ) : null}
