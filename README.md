@@ -42,19 +42,31 @@ Paste your Anthropic API key into Settings inside the app — it lives in iOS Ke
 
 ## Gmail OAuth
 
-trip-os connects to Gmail directly from the device using PKCE — no server, no shared secret. You need your own iOS OAuth client id:
+trip-os connects to Gmail directly from the device using PKCE — no server, no shared secret. You need your own iOS OAuth client id.
 
-1. In the [Google Cloud Console](https://console.cloud.google.com/), create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos` (or whatever you ship under).
-2. On the same credential, register `trip-os://oauthredirect` as the iOS redirect URI. (Google's iOS OAuth flow accepts arbitrary custom-scheme redirects — the `trip-os` scheme is declared by `app.config.ts` and routed by Expo.)
-3. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`).
-4. Set it in your shell before `pnpm ios`:
+**Important:** Google rejects arbitrary custom schemes like `trip-os://oauthredirect` ("doesn't meet Google's OAuth requirements"). Use the **reversed client id** redirect that Google issues for iOS clients.
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos`.
+2. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`). Google also shows an **iOS URL scheme** of the form `com.googleusercontent.apps.1234567890-abc` — that scheme is what the app registers at prebuild. You do **not** need to add `trip-os://oauthredirect`.
+3. The app's redirect URI (derived automatically) is:
+   ```
+   com.googleusercontent.apps.<GUID>:/oauth2redirect/google
+   ```
+   where `<GUID>` is the client id without `.apps.googleusercontent.com`.
+4. Set the client id **before prebuild/build** (it is baked into `extra` and into the native URL scheme):
    ```bash
    export TRIPOS_GOOGLE_CLIENT_ID="1234567890-abc.apps.googleusercontent.com"
-   pnpm ios
+   # or put the same line in a local .env and source it
+   npx expo prebuild --platform ios --clean
+   npx expo run:ios --device
    ```
-   The client id is public-by-design (Google's iOS OAuth flow has no client secret), so it's also fine to keep it in your local `.env` and source it before launch.
+   Verify with:
+   ```bash
+   npx expo config --type public | jq '{client: .extra.googleClientId, redirect: .extra.googleRedirectUrl}'
+   ```
+   The client id is public-by-design (Google's iOS OAuth flow has no client secret).
 
-The Gmail scope is `gmail.readonly`. Tokens land in iOS Keychain — `expo-secure-store` keeps them out of normal app storage and out of backups. Refresh is handled internally by `src/services/gmail.ts` on 401.
+The Gmail scope is `gmail.readonly`. Tokens land in iOS Keychain — `expo-secure-store` keeps them out of normal app storage and out of backups. Refresh is handled internally by `src/services/gmail.ts` on 401. If you change `TRIPOS_GOOGLE_CLIENT_ID`, you must re-run prebuild — Metro reload alone is not enough.
 
 ## Database
 

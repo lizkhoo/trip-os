@@ -8,6 +8,7 @@ import {
   connectGmail,
   describeGmailAuthorizeError,
   getConfiguredGoogleClientId,
+  getConfiguredGmailRedirectUrl,
   gmailAuthConfig,
   GMAIL_CLIENT_ID_MISSING_MESSAGE,
 } from '@/services/gmailAuth';
@@ -76,7 +77,17 @@ export default function ConnectScreen() {
     }
     setBusy(true);
     try {
-      const r = await refresh(gmailAuthConfig(clientId), { refreshToken: tokens.refreshToken });
+      const redirectUrl = getConfiguredGmailRedirectUrl();
+      if (!redirectUrl) {
+        Alert.alert(
+          'Google redirect missing',
+          'Rebuild with TRIPOS_GOOGLE_CLIENT_ID set so the reversed-client-id redirect is baked in.',
+        );
+        return;
+      }
+      const r = await refresh(gmailAuthConfig(clientId, redirectUrl), {
+        refreshToken: tokens.refreshToken,
+      });
       const updated: GmailTokens = {
         ...tokens,
         accessToken: r.accessToken,

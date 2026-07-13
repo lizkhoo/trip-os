@@ -1,5 +1,23 @@
 import type { ExpoConfig } from 'expo/config';
 
+/**
+ * Google iOS OAuth expects the reversed-client-id redirect, not an arbitrary
+ * custom scheme like trip-os://. Format per react-native-app-auth + Google:
+ *   com.googleusercontent.apps.{GUID}:/oauth2redirect/google
+ * The Expo plugin must register the scheme at prebuild — set
+ * TRIPOS_GOOGLE_CLIENT_ID before `npx expo prebuild`.
+ */
+const googleClientId = process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '';
+const googleAppGuid = googleClientId.endsWith('.apps.googleusercontent.com')
+  ? googleClientId.slice(0, -'.apps.googleusercontent.com'.length)
+  : '';
+const googleRedirectUrl = googleAppGuid
+  ? `com.googleusercontent.apps.${googleAppGuid}:/oauth2redirect/google`
+  : '';
+const googleUrlScheme = googleAppGuid
+  ? `com.googleusercontent.apps.${googleAppGuid}`
+  : 'trip-os';
+
 const config: ExpoConfig = {
   name: 'trip-os',
   slug: 'trip-os',
@@ -26,9 +44,20 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-secure-store',
     'expo-sqlite',
-    // Required for OAuth: patches the generated AppDelegate so the browser
-    // redirect resumes the authorize() flow. Without it, connect hangs/fails.
-    ['react-native-app-auth', { redirectUrls: ['trip-os://oauthredirect'] }],
+    // Required for OAuth: patches AppDelegate + registers the Google reverse-client-id
+    // URL scheme so ASWebAuthenticationSession can resume authorize().
+    [
+      'react-native-app-auth',
+      {
+        redirectUrls: googleRedirectUrl
+          ? [googleRedirectUrl]
+          : ['trip-os://oauthredirect'],
+        // Explicit schemes — Google uses `scheme:/path` (one slash), so the plugin's
+        // redirectUrls[0].split('://') extraction would not work alone.
+        ios: { urlScheme: googleUrlScheme },
+        android: { appAuthRedirectScheme: googleUrlScheme },
+      },
+    ],
     [
       'expo-image-picker',
       {
@@ -42,7 +71,8 @@ const config: ExpoConfig = {
   },
   extra: {
     // User-supplied iOS OAuth client id for Gmail. See README for setup.
-    googleClientId: process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '',
+    googleClientId,
+    googleRedirectUrl,
   },
 };
 
