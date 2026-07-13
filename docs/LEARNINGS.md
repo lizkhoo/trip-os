@@ -70,3 +70,31 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 - **Blocker:** [#37](https://github.com/lizkhoo/trip-os/issues/37) — Gmail OAuth still fails on device; Google shows "doesn't meet requirements" during onboarding step 1 despite PR #32 (`react-native-app-auth` plugin, `trip-os://oauthredirect`, PKCE). Closing requires successful device auth or documented root cause + fix.
 - **Onboarding UX:** [#38](https://github.com/lizkhoo/trip-os/issues/38) back navigation to skipped steps; [#39](https://github.com/lizkhoo/trip-os/issues/39) one-sentence "why" per step; [#40](https://github.com/lizkhoo/trip-os/issues/40) replace View-based illustrations with whimsical 2D rainbow assets via image gen (document recipe in docs).
 - All four labeled `ready` for AFK/subagent pickup. Workflow: one branch per issue, PR with `Closes #N`, squash merge.
+
+## 2026-07-13 — Round 2 issues #37–#40
+
+### Scope picked up
+- Recent ready issues under milestone "Manual testing round 2" (#37–#40). Older design-system adoption issues #12–#18 remain open and depend on unmerged PR #10 / PRD PR #11 — not started in this run.
+
+### #37 Gmail OAuth "doesn't meet requirements"
+- Root cause: `trip-os://oauthredirect` is an arbitrary custom scheme Google rejects for iOS OAuth clients.
+- Fix: use reverse-client-id redirect `com.googleusercontent.apps.<GUID>:/oauth2redirect/google` (react-native-app-auth Google docs).
+- Expo plugin gotcha: `redirectUrls[0].split('://')` fails on Google's `scheme:/path` (one slash). Pass explicit `ios.urlScheme` / `android.appAuthRedirectScheme`.
+- `TRIPOS_GOOGLE_CLIENT_ID` must be set **before prebuild** so the URL scheme is registered; Metro reload is not enough. Also request `access_type=offline` + `prompt=consent` for refresh tokens.
+- Device retest still required to close the loop (no iPhone in this cloud environment).
+
+### #38 / #39 Onboarding UX
+- Back via header, in-step button, and tappable earlier step dots; refresh SecureStore state on step change.
+- One plain-language "why" sentence per step, separate from title/body.
+
+### #40 Illustrations
+- GenerateImage → evaluate candidates → compress to WebP 768² (~16–24 KB). Recipe in `docs/ILLUSTRATIONS.md`.
+- Prefer meaning over cute-but-ambiguous; reject assets that look like third-party logos (Gmail M).
+- No `react-native-svg`; WebP `require()` needs no prebuild.
+
+### PR map
+| Issue(s) | Branch / PR |
+|---|---|
+| #37 | `cursor/fix-37-gmail-oauth-redirect-6585` |
+| #38 + #39 | `cursor/feat-38-39-onboarding-back-why-6585` |
+| #40 | `cursor/feat-40-onboarding-illustrations-6585` |
