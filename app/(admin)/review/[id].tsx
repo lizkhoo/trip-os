@@ -23,6 +23,7 @@ import {
 import { getCandidate, acceptCandidate, rejectCandidate } from '@/services/candidates';
 import { listTrips } from '@/services/trips';
 import type { ExtractionCandidate } from '@/domain/candidate';
+import { color } from '@/theme/tokens';
 
 export default function ReviewDetailScreen() {
   const router = useRouter();
@@ -83,7 +84,7 @@ export default function ReviewDetailScreen() {
   if (loading) {
     return (
       <View className="flex-1 bg-paper items-center justify-center">
-        <ActivityIndicator color="#6b6058" />
+        <ActivityIndicator color={color.inkMuted} />
       </View>
     );
   }

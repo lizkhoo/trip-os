@@ -9,6 +9,7 @@
     "start": "expo start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
+    "test:unit": "tsx --test tests/unit/*.test.ts",
     "db:generate": "drizzle-kit generate",
     "scrub": "tsx scripts/scrub-seed.ts",
     "smoke": "tsx scripts/smoke.ts",

@@ -1,6 +1,7 @@
 import { forwardRef, useImperativeHandle, useRef, useMemo } from 'react';
 import GorhomBottomSheet, { BottomSheetView } from '@gorhom/bottom-sheet';
 import { View } from 'react-native';
+import { color } from '@/theme/tokens';
 
 export interface BottomSheetHandle {
   expand(): void;
@@ -30,8 +31,8 @@ export const BottomSheet = forwardRef<BottomSheetHandle, BottomSheetProps>(funct
       index={-1}
       snapPoints={snaps}
       enablePanDownToClose
-      backgroundStyle={{ backgroundColor: '#fbf7f0' }}
-      handleIndicatorStyle={{ backgroundColor: '#6b6058' }}
+      backgroundStyle={{ backgroundColor: color.paper }}
+      handleIndicatorStyle={{ backgroundColor: color.inkMuted }}
     >
       <BottomSheetView>
         <View className="px-5 pb-8">{children}</View>

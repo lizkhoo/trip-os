@@ -3,17 +3,23 @@
  * gmail-to-timeline / upload-to-timeline / cross-path-dedup e2e pathways own
  * correctness for candidate creation, accept, and dedup/merge).
  *
- * Lists pending candidates via the REAL listPendingCandidates and (separately)
- * surfaces recently merged_into candidates labelled as DEDUP HITS — a merged
- * candidate is a duplicate that collapsed into an existing reservation, and it
- * may STILL carry an attachment, so we never assume it has none.
+ * Lists pending candidates via the REAL listPendingCandidates, ordered by
+ * ascending confidence (most-uncertain first). Each card leads with StatusChip.
+ * Separately surfaces recently merged_into candidates labelled as DEDUP HITS.
  */
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable } from 'react-native';
 import { Link, Stack, useFocusEffect } from 'expo-router';
 import { HeaderBack } from '@/components/HeaderBack';
 import { eq } from 'drizzle-orm';
-import { Card, ConfidenceChip, EmptyState, PullToRefresh, ReservationBadge } from '@/components/ui';
+import {
+  Card,
+  ConfidenceChip,
+  EmptyState,
+  PullToRefresh,
+  ReservationBadge,
+  StatusChip,
+} from '@/components/ui';
 import { listPendingCandidates } from '@/services/candidates';
 import { getDb } from '@/db/client';
 import { extractionCandidates } from '@/db/schema';
@@ -47,7 +53,10 @@ export default function ReviewQueueScreen() {
   const [merged, setMerged] = useState<ExtractionCandidate[]>([]);
 
   const refresh = useCallback(async () => {
-    setPending(await listPendingCandidates());
+    const list = await listPendingCandidates();
+    // Most-uncertain first: ascending confidence.
+    list.sort((a, b) => a.confidence - b.confidence);
+    setPending(list);
     setMerged(await listMergedCandidates());
   }, []);
 
@@ -95,7 +104,8 @@ function CandidateRow({ candidate }: { candidate: ExtractionCandidate }) {
     <Link href={{ pathname: '/review/[id]', params: { id: candidate.id } }} asChild>
       <Pressable className="mb-3">
         <Card>
-          <View className="flex-row items-center justify-between mb-1">
+          <View className="flex-row items-center gap-2 mb-1 flex-wrap">
+            <StatusChip status="needs_review" />
             <ReservationBadge type={p.type} />
             <ConfidenceChip value={candidate.confidence} />
           </View>

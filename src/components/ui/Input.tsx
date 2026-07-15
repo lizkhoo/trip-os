@@ -1,4 +1,5 @@
 import { View, Text, TextInput, type TextInputProps } from 'react-native';
+import { color } from '@/theme/tokens';
 
 export interface InputProps extends TextInputProps {
   label?: string;
@@ -13,7 +14,7 @@ export function Input({ label, error, className, ...rest }: InputProps) {
       ) : null}
       <TextInput
         className={`border border-paper-dim bg-paper rounded-xl px-3 py-2.5 text-base text-ink ${className ?? ''}`}
-        placeholderTextColor="#a39787"
+        placeholderTextColor={color.inkMuted}
         {...rest}
       />
       {error ? <Text className="text-xs text-accent-rust mt-1">{error}</Text> : null}

@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const { color } = require('./src/theme/token-values.js');
+
 module.exports = {
   content: ['./app/**/*.{ts,tsx}', './src/**/*.{ts,tsx}'],
   presets: [require('nativewind/preset')],
@@ -6,70 +8,57 @@ module.exports = {
     extend: {
       colors: {
         // ── Design system: "Daylight Departure Board" ──────────────────
-        // Light & bright, status-driven, glanceable. Derived from Flighty's
-        // airport-board principles (color-coded status, one-line density,
-        // boringly-obvious clarity) translated onto a cool, high-luminance
-        // palette. Full spec: docs/design-system.md
+        // Values from src/theme/token-values.js (single source of truth).
+        // Full spec: docs/design-system.md
         //
         // Token NAMES are preserved from the previous warm theme so existing
         // primitives in src/components/ui/ adopt this system without edits.
 
-        // Neutrals — cool, near-black to mid-grey. Text + on-surface ink.
         ink: {
-          DEFAULT: '#14161b', // primary text
-          soft: '#3c424e', // secondary text
-          muted: '#6b7280', // tertiary text, labels, placeholders
+          DEFAULT: color.ink,
+          soft: color.inkSoft,
+          muted: color.inkMuted,
         },
 
-        // Surfaces — bright, cool. `paper` is the base canvas/card; the
-        // ramp steps down for secondary surfaces, then borders/dividers.
         paper: {
-          DEFAULT: '#ffffff', // base surface / cards
-          warm: '#eef2f7', // secondary surface / secondary button (name kept; no longer warm)
-          dim: '#d9dfe8', // borders, hairlines, dividers, pressed-secondary
+          DEFAULT: color.paper,
+          warm: color.paperWarm,
+          dim: color.paperDim,
         },
 
-        // Brand — vivid azure. Primary interactive accent, links, focus.
         brand: {
-          DEFAULT: '#1857c4',
-          soft: '#e6eefb', // tinted background for selected/active states
-          deep: '#0f3e94', // pressed
+          DEFAULT: color.brand,
+          soft: color.brandSoft,
+          deep: color.brandDeep,
         },
 
-        // Status — the signature layer. Glanceable, color-coded state.
-        // Solid value = fills/text; *Soft = tinted background. All solids
-        // clear ≥4.5:1 on white for small text; softs pair with their solid.
         status: {
-          good: '#157f45',
-          goodSoft: '#e4f5ea',
-          warn: '#9a6800',
-          warnSoft: '#fbf0d4',
-          alert: '#c5302b',
-          alertSoft: '#fbe6e5',
-          info: '#1857c4',
-          infoSoft: '#e6eefb',
-          neutral: '#5a6473',
-          neutralSoft: '#eceef2',
+          good: color.status.good,
+          goodSoft: color.status.goodSoft,
+          warn: color.status.warn,
+          warnSoft: color.status.warnSoft,
+          alert: color.status.alert,
+          alertSoft: color.status.alertSoft,
+          info: color.status.info,
+          infoSoft: color.status.infoSoft,
+          neutral: color.status.neutral,
+          neutralSoft: color.status.neutralSoft,
         },
 
-        // Reservation type tokens — used by ReservationBadge / Timeline.
-        // Saturated enough to carry white text on a solid fill.
         type: {
-          flight: '#1857c4', // azure — air/sky
-          lodging: '#6f3ce0', // violet — rest/stay
-          dining: '#c25e15', // tangerine — food
-          activity: '#157f45', // green — explore/outdoors
-          transit: '#0b6678', // teal — ground movement
+          flight: color.type.flight,
+          lodging: color.type.lodging,
+          dining: color.type.dining,
+          activity: color.type.activity,
+          transit: color.type.transit,
         },
 
-        // Accent — kept for ConfidenceChip (forest/ochre/slate) and
-        // Input error text (rust). Aligned to the status spectrum.
         accent: {
-          rust: '#c5302b', // = status.alert
-          forest: '#157f45', // = status.good
-          ochre: '#9a6800', // = status.warn
-          plum: '#6f3ce0', // = type.lodging
-          slate: '#5a6473', // = status.neutral
+          rust: color.accent.rust,
+          forest: color.accent.forest,
+          ochre: color.accent.ochre,
+          plum: color.accent.plum,
+          slate: color.accent.slate,
         },
       },
       fontFamily: {

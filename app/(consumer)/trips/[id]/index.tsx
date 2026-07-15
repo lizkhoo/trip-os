@@ -4,10 +4,11 @@
  *
  * Loads the trip + REAL listReservationsForTrip + locations, derives day cards
  * via REAL buildItineraryDays / getCityGroups / nightOfM, and renders with the
- * Timeline / DayHeader / ReservationBadge / ConfidenceChip primitives:
+ * Timeline / DayHeader / StatusChip primitives:
+ *   - "what now?" pin for the active-or-next reservation,
  *   - one card per day, grouped under city headers,
- *   - a "night N of M" label on multi-night lodging,
- *   - a confidence chip on lower-confidence (non-manual) reservations.
+ *   - typeset night counts + confirmation codes,
+ *   - day-header accessory shows the day's worst operational status.
  */
 import { useCallback, useState } from 'react';
 import { View, Text, Pressable, ActivityIndicator } from 'react-native';
@@ -15,10 +16,11 @@ import { Link, Stack, useFocusEffect, useLocalSearchParams, useRouter } from 'ex
 import {
   Button,
   Card,
-  ConfidenceChip,
   DayHeader,
   EmptyState,
   PullToRefresh,
+  ReservationBadge,
+  StatusChip,
   Timeline,
   type TimelineItem,
 } from '@/components/ui';
@@ -32,14 +34,22 @@ import {
   nightOfM,
   type ItineraryDay,
 } from '@/lib/itinerary';
+import {
+  deriveStatus,
+  findWhatNow,
+  worstStatus,
+} from '@/domain/status';
 import type { Trip } from '@/domain/trip';
 import type { Location } from '@/domain/location';
 import type { Reservation } from '@/domain/reservation';
+import { color } from '@/theme/tokens';
 
 interface LoadedTrip {
   trip: Trip;
   days: ItineraryDay[];
+  reservations: Reservation[];
   homeTimezone: string;
+  now: Date;
 }
 
 async function loadAllLocations(): Promise<Map<string, Location>> {
@@ -83,7 +93,13 @@ export default function TripDetailScreen() {
       trip.home_timezone,
       locationsById,
     );
-    setLoaded({ trip, days, homeTimezone: trip.home_timezone });
+    setLoaded({
+      trip,
+      days,
+      reservations,
+      homeTimezone: trip.home_timezone,
+      now: new Date(),
+    });
     setLoading(false);
   }, [id]);
 
@@ -97,7 +113,7 @@ export default function TripDetailScreen() {
     return (
       <View className="flex-1 bg-paper items-center justify-center">
         <Stack.Screen options={{ title: 'Trip' }} />
-        <ActivityIndicator color="#6b6058" />
+        <ActivityIndicator color={color.inkMuted} />
       </View>
     );
   }
@@ -114,9 +130,10 @@ export default function TripDetailScreen() {
     );
   }
 
-  const { trip, days, homeTimezone } = loaded;
+  const { trip, days, reservations, homeTimezone, now } = loaded;
   const groups = getCityGroups(days);
   const isEmpty = days.every((d) => d.reservations.length === 0);
+  const whatNow = findWhatNow(reservations, now);
 
   return (
     <>
@@ -125,7 +142,7 @@ export default function TripDetailScreen() {
           title: trip.title,
           headerRight: () => (
             <Pressable onPress={() => router.push('/review')} hitSlop={8}>
-              <Text style={{ color: '#b04a2a', fontSize: 17 }}>Review</Text>
+              <Text style={{ color: color.brand, fontSize: 17 }}>Review</Text>
             </Pressable>
           ),
         }}
@@ -135,7 +152,7 @@ export default function TripDetailScreen() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
       >
-        <Text className="text-xs uppercase tracking-widest text-ink-muted mb-4">
+        <Text className="font-mono text-xs uppercase tracking-widest text-ink-muted mb-4 tabular-nums">
           {trip.start_date} – {trip.end_date} · {homeTimezone}
         </Text>
 
@@ -150,6 +167,10 @@ export default function TripDetailScreen() {
             <Button title="Upload" variant="secondary" size="sm" />
           </Link>
         </View>
+
+        {whatNow ? (
+          <WhatNowCard reservation={whatNow} homeTimezone={homeTimezone} now={now} />
+        ) : null}
 
         {isEmpty ? (
           <EmptyState
@@ -171,7 +192,7 @@ export default function TripDetailScreen() {
               {group.days
                 .filter((d) => d.reservations.length > 0)
                 .map((day) => (
-                  <DayCard key={day.date} day={day} homeTimezone={homeTimezone} />
+                  <DayCard key={day.date} day={day} homeTimezone={homeTimezone} now={now} />
                 ))}
             </View>
           ))
@@ -181,17 +202,63 @@ export default function TripDetailScreen() {
   );
 }
 
-function DayCard({ day, homeTimezone }: { day: ItineraryDay; homeTimezone: string }) {
+function WhatNowCard({
+  reservation,
+  homeTimezone,
+  now,
+}: {
+  reservation: Reservation;
+  homeTimezone: string;
+  now: Date;
+}) {
+  const status = deriveStatus(reservation, now);
+
+  return (
+    <Card className="mb-4 bg-status-infoSoft border border-status-info/20">
+      <Text className="text-xs uppercase tracking-widest text-status-info mb-2">What now</Text>
+      <View className="flex-row items-center gap-2 flex-wrap mb-1">
+        <Text className="font-mono text-base text-ink tabular-nums">
+          {timeInZone(reservation.start_at, homeTimezone)}
+        </Text>
+        <ReservationBadge type={reservation.type} />
+        <StatusChip status={status} tone="info" />
+      </View>
+      <Text className="text-lg font-medium text-ink">{reservation.title}</Text>
+      {reservation.confirmation_code ? (
+        <Text className="font-mono text-xs text-ink-muted mt-1 tabular-nums">
+          {reservation.confirmation_code}
+        </Text>
+      ) : null}
+    </Card>
+  );
+}
+
+function DayCard({
+  day,
+  homeTimezone,
+  now,
+}: {
+  day: ItineraryDay;
+  homeTimezone: string;
+  now: Date;
+}) {
   const sorted = [...day.reservations].sort((a, b) => a.start_at.localeCompare(b.start_at));
-  const items: TimelineItem[] = sorted.map((r) => ({
-    id: r.id,
-    time: timeInZone(r.start_at, homeTimezone),
-    title: r.title,
-    detail: reservationDetail(r, day, homeTimezone),
-    type: r.type,
-  }));
+  const items: TimelineItem[] = sorted.map((r) => {
+    const night = r.type === 'lodging' ? nightOfM(r, day.date, homeTimezone) : null;
+    return {
+      id: r.id,
+      time: timeInZone(r.start_at, homeTimezone),
+      title: r.title,
+      detail: reservationProse(r),
+      type: r.type,
+      status: deriveStatus(r, now),
+      nightLabel: night ? `Night ${night.n} of ${night.m}` : undefined,
+      confirmationCode: r.confirmation_code ?? undefined,
+    };
+  });
 
   const lodgingLabel = day.lodging ? nightLabel(day.lodging, day.date, homeTimezone) : null;
+  const dayStatus = worstStatus(sorted, now);
 
   return (
     <Card className="mb-3 p-0">
@@ -200,7 +267,7 @@ function DayCard({ day, homeTimezone }: { day: ItineraryDay; homeTimezone: strin
           date={formatDayLabel(day.date)}
           weekday={weekdayInZone(day.date)}
           label={lodgingLabel ?? undefined}
-          rightAccessory={<DayConfidence reservations={sorted} />}
+          rightAccessory={dayStatus ? <StatusChip status={dayStatus} /> : undefined}
         />
       </View>
       <View className="px-2 pb-3">
@@ -208,15 +275,6 @@ function DayCard({ day, homeTimezone }: { day: ItineraryDay; homeTimezone: strin
       </View>
     </Card>
   );
-}
-
-/** Show the lowest non-manual reservation confidence on the day, if any is uncertain. */
-function DayConfidence({ reservations }: { reservations: Reservation[] }) {
-  const uncertain = reservations
-    .filter((r) => !r.manually_edited_at && typeof r.confidence === 'number' && r.confidence < 1)
-    .map((r) => r.confidence as number);
-  if (uncertain.length === 0) return null;
-  return <ConfidenceChip value={Math.min(...uncertain)} />;
 }
 
 function nightLabel(
@@ -229,19 +287,10 @@ function nightLabel(
   return `Night ${nm.n} of ${nm.m}`;
 }
 
-function reservationDetail(
-  r: Reservation,
-  day: ItineraryDay,
-  homeTimezone: string,
-): string | undefined {
-  const parts: string[] = [];
-  if (r.type === 'flight') parts.push(`${r.details.carrier} ${r.details.flight_number}`);
-  if (r.type === 'lodging') {
-    const nm = nightOfM(r, day.date, homeTimezone);
-    if (nm) parts.push(`Night ${nm.n} of ${nm.m}`);
-  }
-  if (r.confirmation_code) parts.push(`Conf ${r.confirmation_code}`);
-  return parts.length ? parts.join(' · ') : undefined;
+/** Prose-only detail (carrier/flight). Counts and codes are typeset separately. */
+function reservationProse(r: Reservation): string | undefined {
+  if (r.type === 'flight') return `${r.details.carrier} ${r.details.flight_number}`;
+  return undefined;
 }
 
 /** Local hh:mm for an instant in the given IANA zone. */

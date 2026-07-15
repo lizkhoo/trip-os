@@ -1,5 +1,6 @@
 import { ScrollView, RefreshControl, type ScrollViewProps } from 'react-native';
 import { useCallback, useState } from 'react';
+import { color } from '@/theme/tokens';
 
 export interface PullToRefreshProps extends ScrollViewProps {
   onRefresh: () => Promise<void> | void;
@@ -18,7 +19,7 @@ export function PullToRefresh({ onRefresh, children, ...rest }: PullToRefreshPro
   return (
     <ScrollView
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={handle} tintColor="#6b6058" />
+        <RefreshControl refreshing={refreshing} onRefresh={handle} tintColor={color.inkMuted} />
       }
       {...rest}
     >
