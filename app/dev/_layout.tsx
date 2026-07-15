@@ -1,13 +1,9 @@
 import { Stack } from 'expo-router';
+import { headerScreenOptions } from '@/lib/nav';
 
 export default function DevLayout() {
   return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: '#fbf7f0' },
-        headerTintColor: '#1f1a17',
-      }}
-    >
+    <Stack screenOptions={headerScreenOptions}>
       <Stack.Screen name="index" options={{ title: 'trip-os · dev' }} />
       <Stack.Screen name="primitives" options={{ title: 'Primitives' }} />
     </Stack>

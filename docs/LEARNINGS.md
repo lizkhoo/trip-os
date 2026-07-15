@@ -70,3 +70,11 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 - **Blocker:** [#37](https://github.com/lizkhoo/trip-os/issues/37) — Gmail OAuth still fails on device; Google shows "doesn't meet requirements" during onboarding step 1 despite PR #32 (`react-native-app-auth` plugin, `trip-os://oauthredirect`, PKCE). Closing requires successful device auth or documented root cause + fix.
 - **Onboarding UX:** [#38](https://github.com/lizkhoo/trip-os/issues/38) back navigation to skipped steps; [#39](https://github.com/lizkhoo/trip-os/issues/39) one-sentence "why" per step; [#40](https://github.com/lizkhoo/trip-os/issues/40) replace View-based illustrations with whimsical 2D rainbow assets via image gen (document recipe in docs).
 - All four labeled `ready` for AFK/subagent pickup. Workflow: one branch per issue, PR with `Closes #N`, squash merge.
+
+## 2026-07-15 — Design system adoption (#12–#18)
+
+- Shared colors live in `src/theme/token-values.js`; `tailwind.config.js` requires it and `src/theme/tokens.ts` re-exports for app code. Do not put hex in `app/` or `src/components/` — use `color.*` for RN props that cannot take classes.
+- Operational UI status is **derived** via `deriveStatus` in `src/domain/status.ts` (not a new DB column). DB still only has `confirmed` | `cancelled`. Unit tests: `pnpm test:unit`.
+- `StatusChip` is the soft-bg + solid-text primitive; `ConfidenceChip` is a thin wrapper. Timeline rows show type + status; night/conf are typeset fields, not prose.
+- Day view pins `findWhatNow` above the fold with info treatment. Home loads per-trip summaries via `summarizeTripStatuses`. Review queue sorts ascending confidence and leads with `StatusChip`.
+- Design review recorded in `docs/design-review-adoption.md`. Showcase at `/dev/primitives` covers all token groups + StatusChip states.

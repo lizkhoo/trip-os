@@ -1,5 +1,6 @@
 import { Pressable, Text } from 'react-native';
 import { useRouter } from 'expo-router';
+import { color } from '@/theme/tokens';
 
 // Explicit header back action for screens that are entered cross-group (e.g.
 // Settings / Connect / Review pushed from the consumer stack). Those screens are
@@ -9,7 +10,7 @@ export function HeaderBack() {
   const router = useRouter();
   return (
     <Pressable onPress={() => router.back()} hitSlop={12}>
-      <Text style={{ color: '#b04a2a', fontSize: 17 }}>‹ Back</Text>
+      <Text style={{ color: color.brand, fontSize: 17 }}>‹ Back</Text>
     </Pressable>
   );
 }

@@ -4,16 +4,34 @@ import { useFocusEffect, useRouter, Link, Stack } from 'expo-router';
 import { Button, Card, EmptyState, PullToRefresh } from '@/components/ui';
 import { TravelSpotIllustration } from '@/components/illustrations/TravelSpotIllustration';
 import { listTrips } from '@/services/trips';
+import { listReservationsForTrip } from '@/services/reservations';
 import { isOnboardingComplete } from '@/services/onboarding';
+import { summarizeTripStatuses } from '@/domain/status';
 import type { Trip } from '@/domain/trip';
+import { color } from '@/theme/tokens';
+
+interface TripWithSummary {
+  trip: Trip;
+  statusSummary: string | null;
+}
 
 export default function TripsIndex() {
   const router = useRouter();
-  const [trips, setTrips] = useState<Trip[]>([]);
+  const [rows, setRows] = useState<TripWithSummary[]>([]);
 
   const refresh = useCallback(async () => {
     const ts = await listTrips();
-    setTrips(ts);
+    const now = new Date();
+    const withSummaries = await Promise.all(
+      ts.map(async (trip) => {
+        const reservations = await listReservationsForTrip(trip.id);
+        return {
+          trip,
+          statusSummary: summarizeTripStatuses(reservations, now),
+        };
+      }),
+    );
+    setRows(withSummaries);
   }, []);
 
   const syncGmail = useCallback(async () => {
@@ -55,11 +73,11 @@ export default function TripsIndex() {
           title: 'Trips',
           // Empty state already has its own primary CTA — avoid duplicate "+ New".
           headerRight:
-            trips.length === 0
+            rows.length === 0
               ? undefined
               : () => (
                   <Pressable onPress={() => router.push('/trips/new')} hitSlop={8}>
-                    <Text style={{ color: '#b04a2a', fontSize: 17 }}>+ New</Text>
+                    <Text style={{ color: color.brand, fontSize: 17 }}>+ New</Text>
                   </Pressable>
                 ),
         }}
@@ -69,7 +87,7 @@ export default function TripsIndex() {
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 48 }}
       >
-        {trips.length === 0 ? (
+        {rows.length === 0 ? (
           <EmptyState
             illustration={<TravelSpotIllustration />}
             title="No trips yet"
@@ -79,7 +97,9 @@ export default function TripsIndex() {
             }
           />
         ) : (
-          trips.map((t) => <TripRow key={t.id} trip={t} />)
+          rows.map(({ trip, statusSummary }) => (
+            <TripRow key={trip.id} trip={trip} statusSummary={statusSummary} />
+          ))
         )}
 
         <View className="mt-8 gap-1 items-center border-t border-paper-dim pt-4">
@@ -98,7 +118,7 @@ export default function TripsIndex() {
   );
 }
 
-function TripRow({ trip }: { trip: Trip }) {
+function TripRow({ trip, statusSummary }: { trip: Trip; statusSummary: string | null }) {
   return (
     <Link href={{ pathname: '/trips/[id]', params: { id: trip.id } }} asChild>
       <Pressable className="mb-4">
@@ -112,9 +132,12 @@ function TripRow({ trip }: { trip: Trip }) {
           ) : null}
           <View className="p-4">
             <Text className="font-serif text-2xl text-ink">{trip.title}</Text>
-            <Text className="text-xs uppercase tracking-widest text-ink-muted mt-1">
+            <Text className="font-mono text-xs uppercase tracking-widest text-ink-muted mt-1 tabular-nums">
               {formatRange(trip.start_date, trip.end_date)} · {trip.home_timezone}
             </Text>
+            {statusSummary ? (
+              <Text className="text-xs text-ink-soft mt-1">{statusSummary}</Text>
+            ) : null}
           </View>
         </Card>
       </Pressable>

@@ -1,4 +1,5 @@
-import { View, Text } from 'react-native';
+import { StatusChip } from './StatusChip';
+import type { StatusTone } from '@/domain/status';
 
 export interface ConfidenceChipProps {
   value: number;
@@ -8,18 +9,15 @@ export interface ConfidenceChipProps {
   mediumThreshold?: number;
 }
 
+/** Thin wrapper: confidence → status tone + percent label via StatusChip. */
 export function ConfidenceChip({
   value,
   highThreshold = 0.9,
   mediumThreshold = 0.7,
 }: ConfidenceChipProps) {
   const pct = Math.round(value * 100);
-  let bg = 'bg-accent-slate';
-  if (value >= highThreshold) bg = 'bg-accent-forest';
-  else if (value >= mediumThreshold) bg = 'bg-accent-ochre';
-  return (
-    <View className={`self-start rounded px-2 py-0.5 ${bg}`}>
-      <Text className="text-[10px] font-medium text-paper">{pct}%</Text>
-    </View>
-  );
+  let tone: StatusTone = 'neutral';
+  if (value >= highThreshold) tone = 'good';
+  else if (value >= mediumThreshold) tone = 'warn';
+  return <StatusChip tone={tone} label={`${pct}%`} />;
 }

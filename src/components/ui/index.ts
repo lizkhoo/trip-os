@@ -3,6 +3,7 @@ export { Timeline, type TimelineItem, type TimelineProps } from './Timeline';
 export { DayHeader, type DayHeaderProps } from './DayHeader';
 export { ReservationBadge, type ReservationBadgeProps } from './ReservationBadge';
 export { ConfidenceChip, type ConfidenceChipProps } from './ConfidenceChip';
+export { StatusChip, type StatusChipProps } from './StatusChip';
 export { EmptyState, type EmptyStateProps } from './EmptyState';
 export { Button, type ButtonProps } from './Button';
 export { Input, type InputProps } from './Input';

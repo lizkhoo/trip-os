@@ -1,13 +1,6 @@
 import { Stack } from 'expo-router';
+import { headerScreenOptions } from '@/lib/nav';
 
 export default function OnboardingLayout() {
-  return (
-    <Stack
-      screenOptions={{
-        headerStyle: { backgroundColor: '#fbf7f0' },
-        headerTitleStyle: { fontFamily: 'Georgia' },
-        headerShadowVisible: false,
-      }}
-    />
-  );
+  return <Stack screenOptions={headerScreenOptions} />;
 }

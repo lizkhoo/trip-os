@@ -11,6 +11,8 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { getDb } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
+import { color } from '@/theme/tokens';
+import { headerScreenOptions } from '@/lib/nav';
 
 export default function RootLayout() {
   // In the app, getDb() returns the expo-sqlite-backed client that useMigrations
@@ -32,7 +34,7 @@ export default function RootLayout() {
   if (!success) {
     return (
       <View className="flex-1 items-center justify-center bg-paper">
-        <ActivityIndicator color="#1f1a17" />
+        <ActivityIndicator color={color.ink} />
         <Text className="text-sm text-ink-muted mt-2">Applying migrations…</Text>
       </View>
     );
@@ -41,12 +43,7 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
-        <Stack
-          screenOptions={{
-            headerStyle: { backgroundColor: '#fbf7f0' },
-            headerTitleStyle: { fontFamily: 'Georgia' },
-          }}
-        >
+        <Stack screenOptions={headerScreenOptions}>
           <Stack.Screen name="(consumer)" options={{ headerShown: false }} />
           <Stack.Screen name="(admin)" options={{ headerShown: false }} />
           <Stack.Screen name="onboarding" options={{ headerShown: false }} />
