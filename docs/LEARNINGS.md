@@ -70,3 +70,9 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 - **Blocker:** [#37](https://github.com/lizkhoo/trip-os/issues/37) — Gmail OAuth still fails on device; Google shows "doesn't meet requirements" during onboarding step 1 despite PR #32 (`react-native-app-auth` plugin, `trip-os://oauthredirect`, PKCE). Closing requires successful device auth or documented root cause + fix.
 - **Onboarding UX:** [#38](https://github.com/lizkhoo/trip-os/issues/38) back navigation to skipped steps; [#39](https://github.com/lizkhoo/trip-os/issues/39) one-sentence "why" per step; [#40](https://github.com/lizkhoo/trip-os/issues/40) replace View-based illustrations with whimsical 2D rainbow assets via image gen (document recipe in docs).
 - All four labeled `ready` for AFK/subagent pickup. Workflow: one branch per issue, PR with `Closes #N`, squash merge.
+
+## 2026-07-15 — Merged Daylight Departure Board PRs #10 + #11
+
+- Squash-merged [#10](https://github.com/lizkhoo/trip-os/pull/10) (tokens + `docs/design-system.md` + README visual system).
+- [#11](https://github.com/lizkhoo/trip-os/pull/11) was stacked on #10's branch; after #10 deleted its head, #11 went CONFLICTING and base retarget via `gh` API returned 403. Fix: rebase `prd-app-design-system-adoption` onto `main`, retarget base to `main` via ManagePullRequest `update_pr`, then squash-merge.
+- **Did not** implement adoption issues #12–#18 (explicitly out of scope for this request). PRD on main documents that remaining work.
