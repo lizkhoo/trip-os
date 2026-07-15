@@ -84,18 +84,24 @@ CI gates:
 
 ## Visual system
 
-NativeWind (Tailwind) with a warm editorial palette. Tokens in [`tailwind.config.js`](tailwind.config.js):
+NativeWind (Tailwind) with the **"Daylight Departure Board"** design system — a
+light, bright, status-driven palette derived from Flighty's airport-board design
+language. Full spec (principles, foundations, components, patterns): see
+[`docs/design-system.md`](docs/design-system.md). Tokens live in
+[`tailwind.config.js`](tailwind.config.js):
 
 | Token | Hex | Use |
 |---|---|---|
-| `ink` | `#1f1a17` | Primary text |
-| `paper` | `#fbf7f0` | App background |
-| `paper-warm` / `paper-dim` | `#f3ead9` / `#e8dfcc` | Surfaces, dividers |
-| `type-flight` | `#4a5d6e` | Flight reservations (slate) |
-| `type-lodging` | `#b04a2a` | Lodging reservations (rust) |
-| `type-dining` | `#c98a3a` | Dining reservations (ochre) |
-| `type-activity` | `#3f6b4e` | Activity reservations (forest) |
-| `type-transit` | `#7a3b56` | Transit reservations (plum) |
+| `ink` | `#14161b` | Primary text |
+| `paper` | `#ffffff` | Base surface / cards |
+| `paper-warm` / `paper-dim` | `#eef2f7` / `#d9dfe8` | Secondary surface, borders/dividers |
+| `brand` | `#1857c4` | Primary accent, links, focus |
+| `status-good` / `warn` / `alert` / `info` / `neutral` | `#157f45` / `#9a6800` / `#c5302b` / `#1857c4` / `#5a6473` | Glanceable color-coded state |
+| `type-flight` | `#1857c4` | Flight reservations (azure) |
+| `type-lodging` | `#6f3ce0` | Lodging reservations (violet) |
+| `type-dining` | `#c25e15` | Dining reservations (tangerine) |
+| `type-activity` | `#157f45` | Activity reservations (green) |
+| `type-transit` | `#0b6678` | Transit reservations (teal) |
 
 Open the primitives showcase at `/dev/primitives` to see every blessed component in one place.
 
