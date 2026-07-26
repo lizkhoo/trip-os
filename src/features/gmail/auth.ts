@@ -4,7 +4,16 @@ import { setGmailTokens, type GmailTokens } from '@/services/secrets';
 
 const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
 
-export const GMAIL_REDIRECT_URL = 'trip-os://oauthredirect';
+const GOOGLE_CLIENT_ID_SUFFIX = '.apps.googleusercontent.com';
+
+/** Prefer `@/services/gmailAuth` — this module is a legacy duplicate kept in sync. */
+function gmailRedirectUrl(clientId: string): string {
+  if (!clientId.endsWith(GOOGLE_CLIENT_ID_SUFFIX)) {
+    throw new Error(`Unexpected Google client id (expected *${GOOGLE_CLIENT_ID_SUFFIX}).`);
+  }
+  const guid = clientId.slice(0, -GOOGLE_CLIENT_ID_SUFFIX.length);
+  return `com.googleusercontent.apps.${guid}:/oauth2redirect/google`;
+}
 
 export const CLIENT_ID_MISSING_MESSAGE =
   'This build has no Google OAuth client id. Set TRIPOS_GOOGLE_CLIENT_ID (see README "Gmail setup"), ' +
@@ -26,7 +35,7 @@ function authConfig(clientId: string) {
   return {
     issuer: 'https://accounts.google.com',
     clientId,
-    redirectUrl: GMAIL_REDIRECT_URL,
+    redirectUrl: gmailRedirectUrl(clientId),
     scopes: [GMAIL_SCOPE],
     usePKCE: true,
   };
@@ -35,10 +44,14 @@ function authConfig(clientId: string) {
 export function describeGmailAuthorizeError(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
   const lower = message.toLowerCase();
-  if (lower.includes('invalid_request') || lower.includes('redirect')) {
+  if (lower.includes('invalid_request') || lower.includes('redirect') || lower.includes('compliance')) {
+    const clientId = getConfiguredGoogleClientId();
+    const expected = clientId
+      ? gmailRedirectUrl(clientId)
+      : 'com.googleusercontent.apps.<CLIENT_GUID>:/oauth2redirect/google';
     return (
-      `${message}\n\nCheck the Google Cloud Console iOS OAuth client: bundle id must be ` +
-      `com.lizkhoo.tripos and the redirect URI must be exactly ${GMAIL_REDIRECT_URL}.`
+      `${message}\n\nGoogle iOS OAuth requires redirect URI ${expected} ` +
+      `(reversed client id; not trip-os://…). Bundle id must be com.lizkhoo.tripos.`
     );
   }
   if (lower.includes('access_denied') || lower.includes('cancel')) {

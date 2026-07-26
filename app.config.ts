@@ -1,9 +1,22 @@
 import type { ExpoConfig } from 'expo/config';
 
+const googleClientId = process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '';
+const googleOAuthGuid = googleClientId.endsWith('.apps.googleusercontent.com')
+  ? googleClientId.slice(0, -'.apps.googleusercontent.com'.length)
+  : '';
+const googleRedirectScheme =
+  googleOAuthGuid.length > 0 ? `com.googleusercontent.apps.${googleOAuthGuid}` : null;
+// Google authorize() must use scheme:/path (single slash). The react-native-app-auth
+// Expo plugin extracts the URL scheme via split('://'), so plugin config needs ://.
+const googleRedirectUrlForPlugin = googleRedirectScheme
+  ? `${googleRedirectScheme}://oauth2redirect/google`
+  : null;
+
 const config: ExpoConfig = {
   name: 'trip-os',
   slug: 'trip-os',
-  scheme: 'trip-os',
+  // Keep trip-os for general deep links; Google OAuth needs the reversed-client-id scheme.
+  scheme: googleRedirectScheme ? ['trip-os', googleRedirectScheme] : 'trip-os',
   version: '0.1.0',
   orientation: 'portrait',
   userInterfaceStyle: 'automatic',
@@ -28,7 +41,13 @@ const config: ExpoConfig = {
     'expo-sqlite',
     // Required for OAuth: patches the generated AppDelegate so the browser
     // redirect resumes the authorize() flow. Without it, connect hangs/fails.
-    ['react-native-app-auth', { redirectUrls: ['trip-os://oauthredirect'] }],
+    // Plugin only needs the scheme (: // form); JS authorize uses :/ — see gmailAuth.ts.
+    [
+      'react-native-app-auth',
+      {
+        redirectUrls: googleRedirectUrlForPlugin ? [googleRedirectUrlForPlugin] : [],
+      },
+    ],
     [
       'expo-image-picker',
       {
@@ -42,7 +61,7 @@ const config: ExpoConfig = {
   },
   extra: {
     // User-supplied iOS OAuth client id for Gmail. See README for setup.
-    googleClientId: process.env.TRIPOS_GOOGLE_CLIENT_ID ?? '',
+    googleClientId,
   },
 };
 

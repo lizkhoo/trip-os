@@ -53,5 +53,67 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 | #26 | #34 | Illustrated empty state (View + Reanimated) |
 | #27 | #35 | Onboarding wizard + `gmailAuth.ts` extraction |
 
-### Duplicate repo gotcha
-- There is a stale, broken copy of the repo at `~/Documents/GitHub/trip-os` (its `.git` file points at a dead worktree, node_modules incomplete). Running `npx expo run:ios --device` there silently half-runs prebuild and goes nowhere. The real repo is `~/Developer/trip-os` — always run app commands from there. Consider deleting the stale copy (the `trip-os-upload-ocr` worktree next to it is separate and still in use).
+### Duplicate repo gotcha (superseded 2026-07-26)
+- **Correction:** `~/Developer/trip-os` no longer exists. `~/Documents/GitHub/trip-os` is the real, working repo — run all app commands from there.
+
+## 2026-07-17 — Gmail OAuth client + device install
+
+- Google Cloud **iOS** OAuth client form has no redirect URI field (only name, bundle ID, optional App Store ID / Team ID). Leave App Store ID blank; Team ID optional unless App Check. Redirect is **not** configured in that form — the app must send Google’s implicit iOS redirect (reversed client id). Do **not** use `trip-os://oauthredirect` (see 2026-07-18 correction).
+- `TRIPOS_GOOGLE_CLIENT_ID` lives in local gitignored `.env`; `npx expo run:ios` auto-loads it via `env: load .env`.
+- Device build fails with "may need to be unlocked to recover from previously reported preparation errors" when the phone is paired but not actually connected/unlocked — unlock + USB (or fix network debugging) before `npx expo run:ios --device 00008130-000874420083401C`.
+
+## 2026-07-17 — iOS Simulator run + Gmail OAuth probe
+
+- Prefer Simulator over device when the phone won’t load: `xcrun simctl boot "iPhone 17 Pro"` then `npx expo run:ios --device "iPhone 17 Pro"` from `~/Developer/trip-os`. Reuse existing Metro on `:8081` (`npx expo start` already loads `.env` / `TRIPOS_GOOGLE_CLIENT_ID`).
+- Simulator build/install succeeded; app bundled and reached onboarding `/onboarding` “Connect Gmail” (`Not connected yet`). Runtime `Constants` / `getConfiguredGoogleClientId()` returned the iOS client id from `.env`.
+- Invoking `connectGmail()` (via Hermes CDP) opens ASWebAuthenticationSession: system alert `“tripos” Wants to Use “accounts.google.com” to Sign In` (Cancel / Continue). That only proves the auth session *starts* — not that Google accepts the redirect or that tokens are stored.
+- **Correction (2026-07-18):** Prior wording that “Simulator Gmail auth verify worked” was overstated. Tokens were never obtained (`getGmailTokens() === null`). The user then hit Google’s OAuth compliance block (“app is not in compliance with Google's OAuth 2.0 policy”). Root cause in-repo: redirect was hardcoded to `trip-os://oauthredirect`, which Google iOS clients do **not** accept. Google + react-native-app-auth require the reversed-client-id form `com.googleusercontent.apps.<GUID>:/oauth2redirect/google` (single slash after colon). The iOS console form has no redirect field because that scheme is implicit for the iOS client type.
+- Fix landed in `gmailAuth.ts` + `app.config.ts` (derive redirect + register URL scheme from `TRIPOS_GOOGLE_CLIENT_ID`). **Requires** `npx expo prebuild --platform ios --clean` and a native rebuild — Metro alone will not update CFBundleURLSchemes / AppAuth plugin redirects.
+- Still also check Console (not changed by agents): Gmail API enabled; OAuth consent screen in Testing with the Google account as a test user (sensitive scope `gmail.readonly`).
+- Interactive Google login in Simulator still needs a human (Continue + account). Do not claim auth works until UI shows Connected / tokens persist.
+
+## 2026-07-18 — Gmail OAuth compliance / redirect URI
+
+- Error class: Google “doesn't comply with Google's OAuth 2.0 policy” / invalid_request on authorize — commonly invalid `redirect_uri` for the client type, not (only) consent-screen publishing.
+- Wrong: `trip-os://oauthredirect` (no period in scheme; not reversed client id; `://` vs Google’s `:/path`).
+- Right for this stack: `com.googleusercontent.apps.<GUID>:/oauth2redirect/google` where GUID is the client id without `.apps.googleusercontent.com`.
+- README previously incorrectly told users to register `trip-os://oauthredirect` on the iOS credential — that field does not exist; docs corrected.
+- Auth **not** end-to-end verified after the code fix until a human completes Google login post-rebuild.
+- Path for this app is `/oauth2redirect/google` (AppAuth / react-native-app-auth convention), not bare `/oauthredirect`. Scheme must include a period (`com.googleusercontent.apps…`); `trip-os` fails Google’s custom-scheme rules.
+- Diagnosis reconfirmed 2026-07-18 (after timed-out agent): fix already in uncommitted working tree (`gmailAuth.ts`, `features/gmail/auth.ts`, `app.config.ts`, README). `npx expo config` shows reversed scheme + plugin redirect registered when `.env` has the client id. Still needs clean prebuild + rebuild; auth success still unverified.
+
+## 2026-07-19 — Clean iOS rebuild for Gmail OAuth redirect (rebuild quirks)
+
+- `TRIPOS_GOOGLE_CLIENT_ID` must be present in `.env` before `expo prebuild` so the reversed client-id URL scheme lands in `ios/tripos/Info.plist`.
+- Concurrent `pod install` / `expo run:ios` from overlapping agents caused SIGTERM mid-Podfile (`use_react_native!`) and truncated React Native Maven artifact downloads under `ios/Pods/ReactNative*-artifacts/`. Kill competitors first; only one CocoaPods install at a time.
+- RN 0.85.3 prebuilt tarballs from Maven are large (~18MB deps + ~91MB core) and slow; prefetching verified gzip tarballs to `/tmp` then copying into `ios/Pods/ReactNative*-artifacts/` before `pod install` avoids mid-install curl failures.
+- After a raced xcodebuild, clear `~/Library/Developer/Xcode/DerivedData/tripos-*` before retrying `npx expo run:ios` (missing `.o` / Copy XCFrameworks errors).
+- Rebuild+launch success on iPhone 17 Pro does **not** imply Gmail OAuth succeeded; only that the native app installed and process started.
+
+## 2026-07-22 — Clean rebuild landed; redirect scheme verified in the installed binary
+
+- Root cause reconfirmed for the recurring "doesn't comply with Google's OAuth 2.0 policy" rejection: the **installed simulator/device binary was stale**. The redirect fix lives in `app.config.ts` + `gmailAuth.ts`, but the redirect is baked into `ios/tripos/Info.plist` at *prebuild* time — a Metro/`expo start` reload only swaps JS, so the running app kept sending the old `trip-os://oauthredirect`. Fix requires the full native rebuild, not a reload.
+- Ran cleanly this session (no races — verified no competing `pod install`/`xcodebuild`/Metro first): `npx expo prebuild --platform ios --clean` → 107 pods, no Maven truncation → `npx expo run:ios --device "iPhone 17 Pro"` (booted sim UDID `5B59B9A8-0FD7-4659-A4EB-E0484104292C`) → Build Succeeded (only benign `ignoring duplicate libraries: '-lc++'` warning), `AppAuth` (2.1.0) compiled in, installed + launched to onboarding "Connect Gmail / Not connected yet".
+- **Verification that finally closed the loop** (prior sessions all ended "unverified"): inspected the *installed* bundle, not just source —
+  `PlistBuddy -c "Print :CFBundleURLTypes" <DerivedData>/…/tripos.app/Info.plist` shows `com.googleusercontent.apps.120138367202-84d945dtuvlntob14mpij25hqe2nuoph` (+ `trip-os`, `com.lizkhoo.tripos`), **zero `oauthredirect`**, bundle id `com.lizkhoo.tripos`. So the running binary now sends the reversed-client-id redirect Google requires.
+- Still **not** end-to-end proven: interactive Google login was not completed (needs the user's account + the Cloud Console side). Redirect-layer is fixed; if a rejection persists it should now be the **consent-screen/test-user layer** (Gmail API enabled, consent screen External+Testing with all required fields, `wgreen97@gmail.com` added as test user for the restricted `gmail.readonly` scope). Watch for the wording to change from "doesn't comply with OAuth 2.0 policy" to "hasn't completed verification / developer hasn't given access" — that shift confirms Layer 1 is done and only Layer 2 remains.
+
+## 2026-07-22 (cont.) — Gmail OAuth CONFIRMED connected end-to-end on physical device ✅
+
+- **Resolved.** After the clean rebuild + Console fix + device install, the user completed Google sign-in on the physical iPhone and Gmail shows **Connected**. This closes the long-running OAuth saga (issue #37). The "doesn't comply with OAuth 2.0 policy" error is gone.
+- **Final Console-side cause was the consent screen audience.** After the redirect layer was fixed, the block became `Access blocked: trip-os can only be used within its organization` = OAuth consent screen **User Type was "Internal"** (project lives under a Workspace org). Fix: **Google Auth Platform → Audience → Make External**, keep **Testing**, add the signing-in Gmail as a **test user**. Restricted `gmail.readonly` then works for test users with no Google verification.
+- **Device signing gotchas (physical iPhone, free provisioning):**
+  - The active personal team is **`3933642U9H` "Liz Khoo (Personal Team)"** — this is what `app.config.ts` `appleTeamId` is already set to (correct; leave it).
+  - There is a **stale/orphaned code-signing cert** in the login keychain: `Apple Development: emkhoo@gmail.com (J274Y5T57H)`. Its Apple ID is **not** signed into Xcode. **Do not target team J274Y5T57H** — it fails with `No Account for Team "J274Y5T57H"`. Ignore that cert.
+  - A physical-device build needs an **Apple ID signed into Xcode → Settings → Accounts** (GUI, needs the Apple ID password — cannot be done headlessly). "0 provisioned devices" on a fresh free account is normal; the phone auto-registers on first build.
+  - Bootstrap once with raw `xcodebuild -allowProvisioningUpdates -allowProvisioningDeviceRegistration CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM=3933642U9H build` (expo `run:ios` did **not** pass `-allowProvisioningUpdates`, so first-ever provisioning fails through expo). After the profile exists, install/launch works.
+  - Device UDID `00008130-000874420083401C` ("Liz iPhone", iPhone 15 Pro, iOS 26.5.2). `expo run:ios --device "Liz iPhone"` failed name-matching; use the **UDID**. Developer Mode already enabled. First launch needed the user to **Trust** the developer app (Settings → General → VPN & Device Management). Launch via `devicectl` can hit `CoreDeviceError 1011` if the phone drops off — just tap the home-screen icon instead.
+- **Debug vs Release for testing:** the debug build fetches its JS from Metro on every cold start (the long "loading"); if Metro is down the app hangs. For manual testing, prefer a **Release build** (`npx expo run:ios --device <udid> --configuration Release`) — JS embedded, launches standalone, no Metro. Free provisioning profile expires ~7 days.
+- **Confirming the connection without the trip UI:** home screen → bottom footer → **"Connect Gmail"** opens `app/(admin)/connect/index.tsx` (route `/connect`), which shows token status + expiry and a **"Sync now"** button (`runGmailSync`, needs the Anthropic key set for extraction).
+
+### Next steps (resume here) — backlog filed during on-device testing
+- **#47** (enhancement) — Create trip: choose "Create from Gmail" vs "Manually input"; Gmail path captures a scan **date range** (start required; end optional → scan to present day). *No import CTA exists in the trip flow yet — this is the main missing product surface.*
+- **#48** (enhancement) — Onboarding Gmail step should show a **success toast + auto-advance** to step 2 (currently only flips a label / reveals a manual Continue; no toast).
+- **#49** (bug) — Trip-creation screen has **no back/cancel** and is reached via `router.replace` (no back stack) → user gets trapped. Reuse `@/components/HeaderBack`; ensure exit works with no back stack.
+- Issue **#37** (the OAuth bug) closed as resolved by this session.
+

@@ -3,7 +3,27 @@ import { authorize, type AuthorizeResult } from 'react-native-app-auth';
 import { setGmailTokens, type GmailTokens } from '@/services/secrets';
 
 export const GMAIL_SCOPE = 'https://www.googleapis.com/auth/gmail.readonly';
-export const GMAIL_REDIRECT_URL = 'trip-os://oauthredirect';
+
+const GOOGLE_CLIENT_ID_SUFFIX = '.apps.googleusercontent.com';
+
+/** GUID portion of an iOS client id (everything before `.apps.googleusercontent.com`). */
+export function googleOAuthAppGuid(clientId: string): string {
+  if (!clientId.endsWith(GOOGLE_CLIENT_ID_SUFFIX)) {
+    throw new Error(
+      `Unexpected Google client id (expected *${GOOGLE_CLIENT_ID_SUFFIX}).`,
+    );
+  }
+  return clientId.slice(0, -GOOGLE_CLIENT_ID_SUFFIX.length);
+}
+
+/**
+ * Google iOS OAuth clients accept the reversed-client-id custom scheme only.
+ * Format (single slash after colon): `com.googleusercontent.apps.<GUID>:/oauth2redirect/google`
+ * See react-native-app-auth Google docs + AppAuth-iOS Google example.
+ */
+export function gmailRedirectUrl(clientId: string): string {
+  return `com.googleusercontent.apps.${googleOAuthAppGuid(clientId)}:/oauth2redirect/google`;
+}
 
 export function getConfiguredGoogleClientId(): string | null {
   const id = Constants.expoConfig?.extra?.googleClientId;
@@ -14,7 +34,7 @@ export function gmailAuthConfig(clientId: string) {
   return {
     issuer: 'https://accounts.google.com',
     clientId,
-    redirectUrl: GMAIL_REDIRECT_URL,
+    redirectUrl: gmailRedirectUrl(clientId),
     scopes: [GMAIL_SCOPE],
     usePKCE: true,
   };
@@ -27,10 +47,15 @@ export const GMAIL_CLIENT_ID_MISSING_MESSAGE =
 export function describeGmailAuthorizeError(e: unknown): string {
   const message = e instanceof Error ? e.message : String(e);
   const lower = message.toLowerCase();
-  if (lower.includes('invalid_request') || lower.includes('redirect')) {
+  if (lower.includes('invalid_request') || lower.includes('redirect') || lower.includes('compliance')) {
+    const clientId = getConfiguredGoogleClientId();
+    const expected = clientId
+      ? gmailRedirectUrl(clientId)
+      : 'com.googleusercontent.apps.<CLIENT_GUID>:/oauth2redirect/google';
     return (
-      `${message}\n\nCheck the Google Cloud Console iOS OAuth client: bundle id must be ` +
-      `com.lizkhoo.tripos and the redirect URI must be exactly ${GMAIL_REDIRECT_URL}.`
+      `${message}\n\nGoogle iOS OAuth requires redirect URI ${expected} ` +
+      `(reversed client id; not trip-os://…). Bundle id must be com.lizkhoo.tripos. ` +
+      `Rebuild after changing TRIPOS_GOOGLE_CLIENT_ID so the URL scheme is registered.`
     );
   }
   if (lower.includes('access_denied') || lower.includes('cancel')) {

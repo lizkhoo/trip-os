@@ -44,15 +44,23 @@ Paste your Anthropic API key into Settings inside the app — it lives in iOS Ke
 
 trip-os connects to Gmail directly from the device using PKCE — no server, no shared secret. You need your own iOS OAuth client id:
 
-1. In the [Google Cloud Console](https://console.cloud.google.com/), create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos` (or whatever you ship under).
-2. On the same credential, register `trip-os://oauthredirect` as the iOS redirect URI. (Google's iOS OAuth flow accepts arbitrary custom-scheme redirects — the `trip-os` scheme is declared by `app.config.ts` and routed by Expo.)
-3. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`).
-4. Set it in your shell before `pnpm ios`:
+1. In the [Google Cloud Console](https://console.cloud.google.com/), enable the **Gmail API** for the project.
+2. Configure the **OAuth consent screen** (External + Testing is fine for personal use). Add yourself as a **test user**. `gmail.readonly` is a sensitive scope — without test-user access (or verification), Google may block consent.
+3. Create an OAuth 2.0 Client ID of type **iOS**. Set the bundle id to `com.lizkhoo.tripos`. The iOS client form has **no** redirect URI field — Google automatically accepts the reversed-client-id scheme.
+4. Copy the client id (looks like `1234567890-abc.apps.googleusercontent.com`).
+5. Put it in local `.env` (or export it) before a native rebuild:
    ```bash
    export TRIPOS_GOOGLE_CLIENT_ID="1234567890-abc.apps.googleusercontent.com"
-   pnpm ios
+   npx expo prebuild --platform ios --clean
+   npx expo run:ios
    ```
-   The client id is public-by-design (Google's iOS OAuth flow has no client secret), so it's also fine to keep it in your local `.env` and source it before launch.
+   The client id is public-by-design (Google's iOS OAuth flow has no client secret). It is baked into the native URL scheme at prebuild time, so Metro reload alone is not enough after changing it.
+
+The app’s redirect URI is derived from that client id:
+
+`com.googleusercontent.apps.<CLIENT_GUID>:/oauth2redirect/google`
+
+(single slash after the colon — not `trip-os://…`). Do not invent a custom redirect in the console for an iOS client.
 
 The Gmail scope is `gmail.readonly`. Tokens land in iOS Keychain — `expo-secure-store` keeps them out of normal app storage and out of backups. Refresh is handled internally by `src/services/gmail.ts` on 401.
 
