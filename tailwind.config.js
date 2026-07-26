@@ -5,36 +5,77 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Warm editorial palette inspired by japan-2026
+        // ── Design system: "Daylight Departure Board" ──────────────────
+        // Light & bright, status-driven, glanceable. Derived from Flighty's
+        // airport-board principles (color-coded status, one-line density,
+        // boringly-obvious clarity) translated onto a cool, high-luminance
+        // palette. Full spec: docs/design-system.md
+        //
+        // Token NAMES are preserved from the previous warm theme so existing
+        // primitives in src/components/ui/ adopt this system without edits.
+
+        // Neutrals — cool, near-black to mid-grey. Text + on-surface ink.
         ink: {
-          DEFAULT: '#1f1a17',
-          soft: '#2c2520',
-          muted: '#6b6058',
+          DEFAULT: '#14161b', // primary text
+          soft: '#3c424e', // secondary text
+          muted: '#6b7280', // tertiary text, labels, placeholders
         },
+
+        // Surfaces — bright, cool. `paper` is the base canvas/card; the
+        // ramp steps down for secondary surfaces, then borders/dividers.
         paper: {
-          DEFAULT: '#fbf7f0',
-          warm: '#f3ead9',
-          dim: '#e8dfcc',
+          DEFAULT: '#ffffff', // base surface / cards
+          warm: '#eef2f7', // secondary surface / secondary button (name kept; no longer warm)
+          dim: '#d9dfe8', // borders, hairlines, dividers, pressed-secondary
         },
-        accent: {
-          rust: '#b04a2a',
-          forest: '#3f6b4e',
-          ochre: '#c98a3a',
-          plum: '#7a3b56',
-          slate: '#4a5d6e',
+
+        // Brand — vivid azure. Primary interactive accent, links, focus.
+        brand: {
+          DEFAULT: '#1857c4',
+          soft: '#e6eefb', // tinted background for selected/active states
+          deep: '#0f3e94', // pressed
         },
-        // Reservation type tokens — used by ReservationBadge
+
+        // Status — the signature layer. Glanceable, color-coded state.
+        // Solid value = fills/text; *Soft = tinted background. All solids
+        // clear ≥4.5:1 on white for small text; softs pair with their solid.
+        status: {
+          good: '#157f45',
+          goodSoft: '#e4f5ea',
+          warn: '#9a6800',
+          warnSoft: '#fbf0d4',
+          alert: '#c5302b',
+          alertSoft: '#fbe6e5',
+          info: '#1857c4',
+          infoSoft: '#e6eefb',
+          neutral: '#5a6473',
+          neutralSoft: '#eceef2',
+        },
+
+        // Reservation type tokens — used by ReservationBadge / Timeline.
+        // Saturated enough to carry white text on a solid fill.
         type: {
-          flight: '#4a5d6e', // slate — sky/transit-coded
-          lodging: '#b04a2a', // rust — hearth
-          dining: '#c98a3a', // ochre — warmth
-          activity: '#3f6b4e', // forest — exploration
-          transit: '#7a3b56', // plum — movement
+          flight: '#1857c4', // azure — air/sky
+          lodging: '#6f3ce0', // violet — rest/stay
+          dining: '#c25e15', // tangerine — food
+          activity: '#157f45', // green — explore/outdoors
+          transit: '#0b6678', // teal — ground movement
+        },
+
+        // Accent — kept for ConfidenceChip (forest/ochre/slate) and
+        // Input error text (rust). Aligned to the status spectrum.
+        accent: {
+          rust: '#c5302b', // = status.alert
+          forest: '#157f45', // = status.good
+          ochre: '#9a6800', // = status.warn
+          plum: '#6f3ce0', // = type.lodging
+          slate: '#5a6473', // = status.neutral
         },
       },
       fontFamily: {
-        sans: ['System'],
-        serif: ['Georgia', 'serif'],
+        sans: ['System'], // body + UI
+        serif: ['Georgia', 'serif'], // editorial headings (DayHeader, EmptyState)
+        mono: ['Menlo', 'monospace'], // departure-board numerics: times, codes, durations
       },
     },
   },

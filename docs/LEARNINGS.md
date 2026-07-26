@@ -53,8 +53,24 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 | #26 | #34 | Illustrated empty state (View + Reanimated) |
 | #27 | #35 | Onboarding wizard + `gmailAuth.ts` extraction |
 
-### Duplicate repo gotcha (superseded 2026-07-26)
-- **Correction:** `~/Developer/trip-os` no longer exists. `~/Documents/GitHub/trip-os` is the real, working repo — run all app commands from there.
+### Duplicate repo gotcha
+- There is a stale, broken copy of the repo at `~/Documents/GitHub/trip-os` (its `.git` file points at a dead worktree, node_modules incomplete). Running `npx expo run:ios --device` there silently half-runs prebuild and goes nowhere. The real repo is `~/Developer/trip-os` — always run app commands from there. Consider deleting the stale copy (the `trip-os-upload-ocr` worktree next to it is separate and still in use).
+- **Correction (2026-07-26):** `~/Developer/trip-os` no longer exists. `~/Documents/GitHub/trip-os` is the real, working repo — run all app commands from there.
+
+## 2026-07-12 — iPhone build: missing provisioning profile
+
+- Error `No profiles for 'com.lizkhoo.tripos' were found` with automatic signing disabled: `ios/` has `DEVELOPMENT_TEAM = 3933642U9H` but **no `CODE_SIGN_STYLE = Automatic`** in `tripos.xcodeproj/project.pbxproj`, so CLI `xcodebuild` (including via `expo run:ios`) will not create a profile unless `-allowProvisioningUpdates` is passed or signing is fixed once in Xcode.
+- `app.config.ts` already has `ios.appleTeamId: '3933642U9H'` — no config change needed; re-prebuild only if you change native `app.config` / plugins, not for this signing error alone.
+- Profiles on current Xcode live under `~/Library/Developer/Xcode/UserData/Provisioning Profiles/` (not always `~/Library/MobileDevice/Provisioning Profiles/`).
+- Bootstrap once: `xcodebuild -workspace ios/tripos.xcworkspace -scheme tripos -configuration Debug -destination 'id=<UDID>' -allowProvisioningUpdates -allowProvisioningDeviceRegistration CODE_SIGN_STYLE=Automatic` (USB device connected). Or open `ios/tripos.xcworkspace` → tripos target → Signing → enable **Automatically manage signing** + Personal Team.
+- Then `npx expo run:ios --device` from `~/Developer/trip-os` (not `~/Documents/GitHub/trip-os`).
+
+## 2026-07-12 — Round 2 manual testing blockers
+
+- First retest on physical iPhone after closing feedback milestone #20–#27. Four new items filed under milestone [Manual testing round 2 — July 2026](https://github.com/lizkhoo/trip-os/milestone/2); full table in `docs/feedback-2026-07-12.md`.
+- **Blocker:** [#37](https://github.com/lizkhoo/trip-os/issues/37) — Gmail OAuth still fails on device; Google shows "doesn't meet requirements" during onboarding step 1 despite PR #32 (`react-native-app-auth` plugin, `trip-os://oauthredirect`, PKCE). Closing requires successful device auth or documented root cause + fix.
+- **Onboarding UX:** [#38](https://github.com/lizkhoo/trip-os/issues/38) back navigation to skipped steps; [#39](https://github.com/lizkhoo/trip-os/issues/39) one-sentence "why" per step; [#40](https://github.com/lizkhoo/trip-os/issues/40) replace View-based illustrations with whimsical 2D rainbow assets via image gen (document recipe in docs).
+- All four labeled `ready` for AFK/subagent pickup. Workflow: one branch per issue, PR with `Closes #N`, squash merge.
 
 ## 2026-07-17 — Gmail OAuth client + device install
 
@@ -116,4 +132,3 @@ Append key takeaways from agent/chat sessions here so future sessions can refere
 - **#48** (enhancement) — Onboarding Gmail step should show a **success toast + auto-advance** to step 2 (currently only flips a label / reveals a manual Continue; no toast).
 - **#49** (bug) — Trip-creation screen has **no back/cancel** and is reached via `router.replace` (no back stack) → user gets trapped. Reuse `@/components/HeaderBack`; ensure exit works with no back stack.
 - Issue **#37** (the OAuth bug) closed as resolved by this session.
-
