@@ -26,6 +26,10 @@ The `japan-2026` repo (vanilla JS + hand-authored `ITINERARY` array + Leaflet ma
 
 **Scope (in):** Multi-trip support · day-by-day timeline · map view · Gmail ingestion (allowlist primary + label fallback) · drag-and-drop screenshot/PDF upload with on-device OCR + Claude vision extraction · manual CRUD · extraction review queue with confidence scoring · auto-promote ≥ 0.9 · deduplication · last-edit-wins conflict handling · audit trail via `extraction_candidates`.
 
+> The three ingestion paths above have since been joined by a paste box (`source='paste'`) and a
+> Files/AirDrop "Open in trip-os" handler. See [input-methods.md](input-methods.md) for the full
+> map of shipped and deferred input methods.
+
 **Scope (out, deferred to v1.1):** Multi-device iCloud/CloudKit sync · Android · photos per day · free-text notes · wishlist · reminders/notifications · PDF export · sharing/collaboration · background sync (sync only on app foreground + manual pull-to-refresh).
 
 ## Architectural anchors (resolved)

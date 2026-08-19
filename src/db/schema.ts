@@ -2,7 +2,10 @@ import { sql } from 'drizzle-orm';
 import { sqliteTable, text, real, integer, check } from 'drizzle-orm/sqlite-core';
 
 export const RESERVATION_TYPES = ['flight', 'lodging', 'dining', 'activity', 'transit'] as const;
-export const RESERVATION_SOURCES = ['gmail', 'upload', 'manual'] as const;
+// 'paste' = free text the user pasted or dictated into the paste box. Distinct
+// from 'manual' (typed into the structured form) because it still went through
+// Claude extraction and therefore carries a confidence + a candidate row.
+export const RESERVATION_SOURCES = ['gmail', 'upload', 'manual', 'paste'] as const;
 export const RESERVATION_STATUSES = ['confirmed', 'cancelled'] as const;
 export const ATTACHMENT_KINDS = ['pdf', 'image'] as const;
 export const CANDIDATE_STATUSES = ['pending', 'accepted', 'rejected', 'merged_into'] as const;

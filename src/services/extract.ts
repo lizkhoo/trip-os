@@ -34,7 +34,18 @@ export type ExtractionResult =
 
 export interface EmailExtractionArgs {
   raw_text: string;
+  /**
+   * Source ref stamped onto the proposal. A Gmail message id when source is
+   * 'gmail'; the paste orchestrator's run id when source is 'paste'.
+   */
   message_id: string;
+  /**
+   * Which ingestion path this text came from. Defaults to 'gmail'. 'paste' is
+   * free text the user pasted or dictated — same model and system prompt, but
+   * the user turn stops calling it an email, which matters when the text is a
+   * chat message or a spoken sentence rather than a confirmation.
+   */
+  source?: 'gmail' | 'paste';
   /** Optional hint — Gmail-derived trip id when the date matches exactly one trip. */
   hint_trip_id?: string | null;
 }
@@ -267,7 +278,7 @@ function pluckToolInput(resp: ClaudeResponse): Record<string, unknown> {
 function parseToolInput(
   toolInput: Record<string, unknown>,
   sourceRef: string,
-  source: 'gmail' | 'upload',
+  source: 'gmail' | 'upload' | 'paste',
 ):
   | { ok: true; proposed: ReservationProposal; confidence: number }
   | { ok: false; error: string } {
@@ -292,16 +303,22 @@ export async function extractReservationFromEmail(
   const apiKey = await getAnthropicKey();
   if (!apiKey) throw new Error('Anthropic API key not set');
 
+  const source = args.source ?? 'gmail';
+  const lede =
+    source === 'paste'
+      ? 'Extract the reservation from this text, which the user pasted or dictated. It may be an excerpt of a confirmation, a message from a travel companion, or a plain sentence describing a booking — extract what is there and lower confidence for anything you had to infer.'
+      : 'Extract the reservation from this email.';
+
   const resp = await callClaude(MODEL_EMAIL, apiKey, [
     {
       role: 'user',
-      content: `Extract the reservation from this email. Source message id: ${args.message_id}\n\n---\n${args.raw_text}`,
+      content: `${lede} Source message id: ${args.message_id}\n\n---\n${args.raw_text}`,
     },
   ]);
 
   const toolInput = pluckToolInput(resp);
   const raw = JSON.stringify(resp);
-  const result = parseToolInput(toolInput, args.message_id, 'gmail');
+  const result = parseToolInput(toolInput, args.message_id, source);
   if (!result.ok) {
     return { ok: false, error: result.error, confidence: 0, raw_claude_response: raw };
   }

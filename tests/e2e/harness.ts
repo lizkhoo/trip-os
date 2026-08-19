@@ -146,6 +146,25 @@ export function installMockExtract(
   });
 }
 
+/**
+ * Install a deterministic Claude text extraction via the extract test hatch.
+ * The paste orchestrator mints its own source_ref (run id) internally, so —
+ * exactly like installMockAttachmentExtract — the test can't key on it and
+ * instead passes a builder that receives the orchestrator's args and echoes the
+ * run id back onto the proposal.
+ */
+export function installMockEmailExtract(
+  build: (args: EmailExtractionArgs) => ExtractionResult,
+): void {
+  __setExtractForTest({
+    extractReservationFromEmail: async (args: EmailExtractionArgs): Promise<ExtractionResult> =>
+      build(args),
+    extractReservationFromAttachment: async (): Promise<ExtractionResult> => {
+      throw new Error('mock extract: attachment extraction not configured');
+    },
+  });
+}
+
 /** A put() call recorded by installMockStorage. */
 export interface MockStoragePut {
   sourceUri: string;

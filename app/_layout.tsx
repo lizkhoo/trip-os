@@ -11,11 +11,16 @@ import { useMigrations } from 'drizzle-orm/expo-sqlite/migrator';
 import type { ExpoSQLiteDatabase } from 'drizzle-orm/expo-sqlite';
 import { getDb } from '@/db/client';
 import migrations from '@/db/migrations/migrations';
+import { useIncomingFileRouter } from '@/features/inbox/useIncomingFile';
 
 export default function RootLayout() {
   // In the app, getDb() returns the expo-sqlite-backed client that useMigrations
   // expects; the cast re-narrows our backend-agnostic Db port type to it.
   const { success, error } = useMigrations(getDb() as unknown as ExpoSQLiteDatabase, migrations);
+
+  // "Open in trip-os" / AirDrop → the upload screen. Gated on migrations so the
+  // push lands in a mounted navigator rather than the splash below.
+  useIncomingFileRouter(success);
 
   useEffect(() => {
     if (error) console.error('Migration failed:', error);
