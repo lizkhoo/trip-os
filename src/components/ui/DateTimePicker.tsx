@@ -3,6 +3,7 @@ import { View, Text, Pressable, Platform } from 'react-native';
 import RNDateTimePicker, {
   type DateTimePickerEvent,
 } from '@react-native-community/datetimepicker';
+import { localWallClockAsUtc } from '@/lib/time';
 
 export interface DateTimePickerProps {
   label?: string;
@@ -12,13 +13,21 @@ export interface DateTimePickerProps {
 }
 
 function formatValue(value: Date, mode: 'date' | 'time' | 'datetime'): string {
+  // `timeZone: 'UTC'` on the mirrored instant is what makes this show the
+  // wall-clock the picker shows. A bare toLocale* would render the UTC day,
+  // because the FormatJS polyfill defaults to UTC — see localWallClockAsUtc.
+  const shown = localWallClockAsUtc(value);
   switch (mode) {
     case 'date':
-      return value.toLocaleDateString();
+      return shown.toLocaleDateString(undefined, { timeZone: 'UTC' });
     case 'time':
-      return value.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+      return shown.toLocaleTimeString([], {
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: 'UTC',
+      });
     case 'datetime':
-      return value.toLocaleString();
+      return shown.toLocaleString(undefined, { timeZone: 'UTC' });
     default: {
       const exhaustive: never = mode;
       throw new Error(`Unhandled mode: ${exhaustive}`);
