@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { View, Text, Alert, ScrollView } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
-import { Button, Input } from '@/components/ui';
+import { ApiKeyField, Button } from '@/components/ui';
 import { OnboardingIllustration } from '@/components/illustrations/OnboardingIllustration';
 import {
   connectGmail,
@@ -22,7 +22,6 @@ export default function OnboardingScreen() {
   const [busy, setBusy] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [hasAnthropicKey, setHasAnthropicKey] = useState(false);
-  const [keyInput, setKeyInput] = useState('');
 
   const step = STEPS[stepIndex] ?? 'trip';
 
@@ -81,12 +80,10 @@ export default function OnboardingScreen() {
     }
   }, []);
 
-  const saveAnthropicKey = useCallback(async () => {
-    if (!keyInput.trim()) return;
-    await setAnthropicKey(keyInput.trim());
-    setKeyInput('');
+  const saveAnthropicKey = useCallback(async (key: string) => {
+    await setAnthropicKey(key);
     setHasAnthropicKey(true);
-  }, [keyInput]);
+  }, []);
 
   const createTrip = useCallback(async () => {
     await setOnboardingComplete();
@@ -155,15 +152,7 @@ export default function OnboardingScreen() {
             </View>
           ) : (
             <View className="mt-6 gap-2">
-              <Input
-                placeholder="sk-ant-..."
-                value={keyInput}
-                onChangeText={setKeyInput}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-              />
-              <Button title="Save key" onPress={saveAnthropicKey} disabled={!keyInput.trim()} />
+              <ApiKeyField onSave={saveAnthropicKey} />
               <Button title="Skip for now" variant="ghost" onPress={skip} />
             </View>
           )}
