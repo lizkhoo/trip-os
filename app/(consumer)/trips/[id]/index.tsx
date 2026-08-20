@@ -149,12 +149,15 @@ export default function TripDetailScreen() {
           <Link href="/upload" asChild>
             <Button title="Upload" variant="secondary" size="sm" />
           </Link>
+          <Link href="/paste" asChild>
+            <Button title="Paste" variant="secondary" size="sm" />
+          </Link>
         </View>
 
         {isEmpty ? (
           <EmptyState
             title="No reservations yet"
-            description="Add one manually, upload a screenshot, or sync Gmail from the home screen."
+            description="Add one manually, paste a confirmation, upload a screenshot, or sync Gmail from the home screen."
             action={
               <Link
                 href={{ pathname: '/reservations/edit', params: { tripId: trip.id } }}

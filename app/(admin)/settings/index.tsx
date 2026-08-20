@@ -4,7 +4,7 @@ import { Stack } from 'expo-router';
 import { HeaderBack } from '@/components/HeaderBack';
 import Slider from '@react-native-community/slider';
 import { eq } from 'drizzle-orm';
-import { Button, Card, Input } from '@/components/ui';
+import { ApiKeyField, Button, Card, Input } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { settings } from '@/db/schema';
 import { setAnthropicKey, getAnthropicKey, clearAnthropicKey } from '@/services/secrets';
@@ -23,7 +23,6 @@ interface SettingsState {
 
 export default function SettingsScreen() {
   const [hasKey, setHasKey] = useState(false);
-  const [keyInput, setKeyInput] = useState('');
   const [state, setState] = useState<SettingsState>({
     autoPromoteThreshold: 0.9,
     gmailLabelName: 'trip-os/inbox',
@@ -57,12 +56,10 @@ export default function SettingsScreen() {
     void load();
   }, [load]);
 
-  const saveKey = useCallback(async () => {
-    if (!keyInput.trim()) return;
-    await setAnthropicKey(keyInput.trim());
-    setKeyInput('');
+  const saveKey = useCallback(async (key: string) => {
+    await setAnthropicKey(key);
     setHasKey(true);
-  }, [keyInput]);
+  }, []);
 
   const removeKey = useCallback(async () => {
     await clearAnthropicKey();
@@ -154,19 +151,7 @@ export default function SettingsScreen() {
             </View>
           </View>
         ) : (
-          <View>
-            <Input
-              placeholder="sk-ant-..."
-              value={keyInput}
-              onChangeText={setKeyInput}
-              secureTextEntry
-              autoCapitalize="none"
-              autoCorrect={false}
-            />
-            <View className="mt-3">
-              <Button title="Save key" onPress={saveKey} />
-            </View>
-          </View>
+          <ApiKeyField onSave={saveKey} />
         )}
       </Card>
 

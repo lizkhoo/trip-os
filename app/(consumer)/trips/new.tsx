@@ -10,21 +10,8 @@ import { ScrollView, View, Alert } from 'react-native';
 import { Stack, useRouter } from 'expo-router';
 import { Button, LocationAutocomplete, Select, DateTimePicker } from '@/components/ui';
 import { getTimezoneOptions } from '@/lib/timezones';
+import { localYmd } from '@/lib/time';
 import { createTrip } from '@/services/trips';
-
-/** yyyy-mm-dd for an instant in the given IANA zone. */
-function ymdInZone(d: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-CA', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).formatToParts(d);
-  const y = parts.find((p) => p.type === 'year')?.value ?? '0000';
-  const m = parts.find((p) => p.type === 'month')?.value ?? '00';
-  const day = parts.find((p) => p.type === 'day')?.value ?? '00';
-  return `${y}-${m}-${day}`;
-}
 
 export default function TripCreateScreen() {
   const router = useRouter();
@@ -40,8 +27,10 @@ export default function TripCreateScreen() {
       Alert.alert('Missing title', 'Give the trip a name.');
       return;
     }
-    const start = ymdInZone(startDate, timezone);
-    const end = ymdInZone(endDate, timezone);
+    // The day the user tapped IS the trip day. Re-deriving it in the trip's
+    // home timezone would shift it whenever that zone differs from the device's.
+    const start = localYmd(startDate);
+    const end = localYmd(endDate);
     if (end < start) {
       Alert.alert('Invalid dates', 'The end date must be on or after the start date.');
       return;

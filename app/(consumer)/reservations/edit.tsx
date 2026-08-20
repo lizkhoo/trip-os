@@ -21,7 +21,7 @@ import {
   getReservation,
 } from '@/services/reservations';
 import { getTrip } from '@/services/trips';
-import { composeIso, dateInZone } from '@/lib/time';
+import { composeIso, localHm, localYmd, zonedWallClockAsLocalDate } from '@/lib/time';
 import type { ReservationInput, ReservationType } from '@/domain/reservation';
 
 const TYPE_OPTIONS: SelectOption<ReservationType>[] = [
@@ -54,17 +54,25 @@ export default function ReservationEditScreen() {
   useEffect(() => {
     let active = true;
     void (async () => {
+      // Resolve the zone first: the pickers below are populated with the
+      // wall-clock as read IN this zone, so loading them before it is known
+      // would render the reservation at the device's offset instead.
+      let zone = 'UTC';
       if (typeof tripId === 'string') {
         const trip = await getTrip(tripId);
-        if (active && trip) setTimezone(trip.home_timezone);
+        if (!active) return;
+        if (trip) {
+          zone = trip.home_timezone;
+          setTimezone(zone);
+        }
       }
       if (isEditing && typeof id === 'string') {
         const res = await getReservation(id);
         if (!active || !res) return;
         setType(res.type);
         setTitle(res.title);
-        setStartAt(new Date(res.start_at));
-        setEndAt(res.end_at ? new Date(res.end_at) : null);
+        setStartAt(zonedWallClockAsLocalDate(res.start_at, zone));
+        setEndAt(res.end_at ? zonedWallClockAsLocalDate(res.end_at, zone) : null);
         setConfirmationCode(res.confirmation_code ?? '');
         if (res.type === 'flight') {
           setCarrier(res.details.carrier);
@@ -90,13 +98,16 @@ export default function ReservationEditScreen() {
       Alert.alert('Missing title', 'Give the reservation a title.');
       return null;
     }
+    // The picker shows device-local wall-clock; the timezone Select says which
+    // zone those digits belong to. Converting the instant into `timezone` first
+    // would shift the user's typed time by the offset between the two zones.
     const start_at = composeIso(
-      dateInZone(startAt.toISOString(), timezone),
-      timeHm(startAt, timezone),
+      localYmd(startAt),
+      localHm(startAt),
       timezone,
     );
     const end_at = endAt
-      ? composeIso(dateInZone(endAt.toISOString(), timezone), timeHm(endAt, timezone), timezone)
+      ? composeIso(localYmd(endAt), localHm(endAt), timezone)
       : null;
     const base = {
       trip_id: tripId,
@@ -246,14 +257,3 @@ export default function ReservationEditScreen() {
 }
 
 /** Local hh:mm for an instant in the given IANA zone. */
-function timeHm(d: Date, timeZone: string): string {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(d);
-  const hh = parts.find((p) => p.type === 'hour')?.value ?? '00';
-  const mm = parts.find((p) => p.type === 'minute')?.value ?? '00';
-  return `${hh}:${mm}`;
-}

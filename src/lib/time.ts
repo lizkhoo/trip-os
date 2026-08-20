@@ -74,3 +74,73 @@ export function composeIso(dateYmd: string, timeHm: string, timeZone: string): s
   const offset = offsetForZone(probe, timeZone);
   return `${dateYmd}T${hh ?? '00'}:${mm ?? '00'}:00${offset}`;
 }
+
+/**
+ * Read the wall-clock a `Date` shows in the DEVICE's local timezone.
+ *
+ * Native date/time pickers work in device-local time: when the user taps
+ * "July 3", they get a Date whose *local* components are July 3. Anything that
+ * re-derives the calendar date from the underlying instant in a different zone
+ * (`dateInZone(d.toISOString(), tripTimezone)`) can land on a different day —
+ * that is an off-by-one waiting to happen, in whichever direction the two zones
+ * differ.
+ *
+ * So: take the digits the user actually saw, and let the caller's IANA zone
+ * decide what those digits mean (see `composeIso`). These use core `Date`
+ * getters, which are unaffected by the FormatJS Intl polyfill.
+ */
+export function localYmd(d: Date): string {
+  const y = String(d.getFullYear()).padStart(4, '0');
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+/** Wall-clock "HH:MM" (24h) a `Date` shows in the device's local timezone. */
+export function localHm(d: Date): string {
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mm = String(d.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+/**
+ * Shift `d` so its UTC components equal its device-local components.
+ *
+ * For DISPLAY only. `Date.prototype.toLocale*` is replaced by
+ * @formatjs/intl-datetimeformat/polyfill-force, which defaults to **UTC**
+ * because `__setDefaultTimeZone` is never called (see src/lib/intl-polyfill.ts)
+ * — so a bare `toLocaleDateString()` renders the UTC day, not the local one, and
+ * shows tomorrow's date all evening for anyone west of Greenwich.
+ *
+ * Formatting this mirrored instant with an explicit `timeZone: 'UTC'` reproduces
+ * the local wall-clock while keeping locale-aware formatting.
+ */
+export function localWallClockAsUtc(d: Date): Date {
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60_000);
+}
+
+/**
+ * Inverse of `localYmd`/`localHm`: build a Date whose DEVICE-LOCAL components
+ * equal the wall-clock `iso` shows in `timeZone`.
+ *
+ * Used when loading a stored reservation into the pickers. `new Date(iso)` is
+ * the right *instant* but the wrong *display*: a 09:02 Tokyo booking opened on a
+ * device in Los Angeles renders as 17:02 the previous day. Since save takes the
+ * picker's digits literally, loading the raw instant would rewrite the booking
+ * to 17:02 Tokyo on the next save — a silent round-trip corruption.
+ */
+export function zonedWallClockAsLocalDate(iso: string, timeZone: string): Date {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    // h23 rather than hour12:false — the latter renders midnight as "24" under
+    // some ICU builds, which would roll the date forward a day.
+    hourCycle: 'h23',
+  }).formatToParts(new Date(iso));
+  const get = (type: string): number => Number(parts.find((p) => p.type === type)?.value ?? '0');
+  return new Date(get('year'), get('month') - 1, get('day'), get('hour'), get('minute'), 0, 0);
+}

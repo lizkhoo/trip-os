@@ -30,6 +30,28 @@ const config: ExpoConfig = {
         'trip-os reads screenshots and PDFs of your reservations to build your itinerary.',
       NSCameraUsageDescription:
         'trip-os does not capture photos directly; this entry is reserved for a future scan-to-add feature.',
+      // Register as a viewer for confirmation PDFs and screenshots so trip-os
+      // shows up in Share sheets, Files' "Open in", and as an AirDrop target
+      // from a Mac. LSHandlerRank 'Alternate' — we are not claiming to be the
+      // default PDF/image app, just an available destination.
+      CFBundleDocumentTypes: [
+        {
+          CFBundleTypeName: 'PDF confirmation',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['com.adobe.pdf'],
+        },
+        {
+          CFBundleTypeName: 'Confirmation screenshot',
+          CFBundleTypeRole: 'Viewer',
+          LSHandlerRank: 'Alternate',
+          LSItemContentTypes: ['public.image'],
+        },
+      ],
+      // false: iOS copies the file into Documents/Inbox/ and hands us a
+      // file:// URL we own. Opening in place would give us a security-scoped
+      // URL that expires, which storage.put() (a plain copy) can't hold onto.
+      LSSupportsOpeningDocumentsInPlace: false,
     },
   },
   android: {
